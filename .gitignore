@@ -1,27 +1,40 @@
-# ===== Gradle =====
-.gradle/
+HELP.md
+.gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-# ===== IDE =====
-.idea/
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
 *.iml
-.vscode/
+*.ipr
 out/
+!**/src/main/**/out/
+!**/src/test/**/out/
 
-# ===== OS =====
-.DS_Store
-Thumbs.db
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
 
-# ===== 로그 =====
-*.log
+### VS Code ###
+.vscode/
 
-# ===== 비밀값 (절대 커밋 금지) =====
-application-local.yml
-application-local.yaml
-application-secret.yml
-application-secret.yaml
-.env
-.env.*
-*.pem
-*.key
+### Claude Code ###
+.claude/

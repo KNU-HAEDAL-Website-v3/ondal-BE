@@ -1,0 +1,32 @@
+spring:
+  profiles:
+    active: local
+
+---
+# ===== local: 개발자 PC + docker compose의 PostgreSQL =====
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://localhost:5432/hoj
+    username: hoj
+    password: hoj-local-password   # 로컬 도커 전용 값 — 진짜 비밀은 application-local.yml(.gitignore됨)에
+  jpa:
+    hibernate:
+      ddl-auto: update   # P1 개발용. 첫 운영 배포 전 Flyway 마이그레이션으로 전환한다(알려진 부채)
+    open-in-view: false  # 지연로딩은 서비스 계층 안에서 끝낸다 — 켜두면 N+1을 눈치 못 챈 채 굴러감
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    time-zone: UTC       # 응답의 시각은 UTC(ISO-8601) — KST 변환은 프론트 책임 (docs 결정)
+
+server:
+  servlet:
+    session:
+      timeout: 12h       # 수업 하나를 버티는 길이. 서버 재시작 시 전원 로그아웃(인메모리 세션)은 P1에서 감수
+
+logging:
+  level:
+    org.hibernate.SQL: debug   # 학습용 — 실행되는 SQL이 보여야 주니어가 JPA 감을 잡는다
