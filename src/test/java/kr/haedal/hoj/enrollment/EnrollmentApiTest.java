@@ -62,7 +62,7 @@ class EnrollmentApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$[0].id").value(current))
                     .andExpect(jsonPath("$[0].status").value("ACTIVE"))
                     .andExpect(jsonPath("$[0].myRole").value("STUDENT"))
-                    .andExpect(jsonPath("$[0].operators[0].loginId").value("op1"))
+                    .andExpect(jsonPath("$[0].operators[0].name").value("op1"))
                     .andExpect(jsonPath("$[1].id").value(past))
                     .andExpect(jsonPath("$[1].status").value("ARCHIVED"));
         }

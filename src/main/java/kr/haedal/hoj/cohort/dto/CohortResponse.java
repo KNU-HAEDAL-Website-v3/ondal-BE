@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import kr.haedal.hoj.cohort.Cohort;
 import kr.haedal.hoj.cohort.CohortStatus;
 import kr.haedal.hoj.enrollment.EnrollmentRole;
-import kr.haedal.hoj.user.dto.UserResponse;
+import kr.haedal.hoj.user.dto.UserSummary;
 
 import java.time.Instant;
 import java.util.List;
@@ -21,8 +21,9 @@ public record CohortResponse(
         CohortStatus status,
         Instant createdAt,
 
-        @Schema(description = "이 분반의 운영진. 학생에게도 공개되는 유일한 타인 정보(질문할 상대를 알아야 하므로)")
-        List<UserResponse> operators,
+        @Schema(description = "이 분반의 운영진 — id와 이름만. 학생에게 공개되는 유일한 타인 정보이므로 loginId·globalRole 은 내려주지 않는다. "
+                + "프론트: 이름을 다른 색으로 표시, 클릭 시 팝업에 이름 + 직책('교육 운영진')")
+        List<UserSummary> operators,
 
         @Schema(description = "수강생 수. 요청자가 이 분반의 OPERATOR 또는 전역 ADMIN일 때만 값이 있고, STUDENT에게는 null")
         Integer studentCount,
@@ -36,7 +37,7 @@ public record CohortResponse(
 ) {
     /** 여러 값을 조합하므로 from(entity)가 아니라 of(...) */
     public static CohortResponse of(Cohort cohort,
-                                    List<UserResponse> operators,
+                                    List<UserSummary> operators,
                                     Integer studentCount,
                                     EnrollmentRole myRole,
                                     boolean canManage) {

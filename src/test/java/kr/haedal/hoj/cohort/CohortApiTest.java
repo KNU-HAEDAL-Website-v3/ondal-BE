@@ -65,7 +65,9 @@ class CohortApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.name").value("2026-2 C언어"))
                     .andExpect(jsonPath("$.status").value("ACTIVE"))
                     .andExpect(jsonPath("$.operators", hasSize(2)))
-                    .andExpect(jsonPath("$.operators[*].loginId").value(containsInAnyOrder("op1", "op2")))
+                    .andExpect(jsonPath("$.operators[*].name").value(containsInAnyOrder("op1", "op2")))   // 스텁 로그인은 name == loginId
+                    .andExpect(jsonPath("$.operators[0].loginId").doesNotExist())                     // 학생에게도 내려가는 응답 — loginId·globalRole 없음
+                    .andExpect(jsonPath("$.operators[0].globalRole").doesNotExist())
                     .andExpect(jsonPath("$.studentCount").value(0))
                     .andExpect(jsonPath("$.myRole").value(nullValue()))   // 관리자는 비소속
                     .andExpect(jsonPath("$.canManage").value(true))
@@ -131,8 +133,9 @@ class CohortApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.myRole").value("STUDENT"))
                     .andExpect(jsonPath("$.canManage").value(false))
                     .andExpect(jsonPath("$.studentCount").value(nullValue()))
-                    .andExpect(jsonPath("$.operators", hasSize(1)))       // 운영진 이름은 학생에게도 공개
-                    .andExpect(jsonPath("$.operators[0].loginId").value("op1"));
+                    .andExpect(jsonPath("$.operators", hasSize(1)))       // 운영진 이름은 학생에게도 공개 — 이름만
+                    .andExpect(jsonPath("$.operators[0].name").value("op1"))
+                    .andExpect(jsonPath("$.operators[0].loginId").doesNotExist());
         }
 
         @Test

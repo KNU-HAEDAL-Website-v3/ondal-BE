@@ -6,7 +6,7 @@ import kr.haedal.hoj.enrollment.Enrollment;
 import kr.haedal.hoj.enrollment.EnrollmentRepository;
 import kr.haedal.hoj.enrollment.EnrollmentRole;
 import kr.haedal.hoj.user.User;
-import kr.haedal.hoj.user.dto.UserResponse;
+import kr.haedal.hoj.user.dto.UserSummary;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -50,10 +50,11 @@ public class CohortResponseAssembler {
     }
 
     private CohortResponse toResponse(Cohort cohort, List<Enrollment> enrollments, User viewer) {
-        List<UserResponse> operators = enrollments.stream()
+        // 운영진은 이름만 — 학생에게 내려가는 응답이므로 loginId·globalRole 을 싣지 않는다 (UserSummary)
+        List<UserSummary> operators = enrollments.stream()
                 .filter(Enrollment::isOperator)
-                .map(e -> UserResponse.from(e.getUser()))
-                .sorted(Comparator.comparing(UserResponse::name))
+                .map(e -> UserSummary.from(e.getUser()))
+                .sorted(Comparator.comparing(UserSummary::name))
                 .toList();
 
         EnrollmentRole myRole = enrollments.stream()
