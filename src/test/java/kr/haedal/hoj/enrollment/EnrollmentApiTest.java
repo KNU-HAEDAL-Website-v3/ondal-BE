@@ -96,8 +96,10 @@ class EnrollmentApiTest extends ApiTestSupport {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(3)))
                     .andExpect(jsonPath("$[0].role").value("OPERATOR"))
+                    .andExpect(jsonPath("$[0].title").value("교육운영진"))
                     .andExpect(jsonPath("$[0].user.loginId").value("op1"))
-                    .andExpect(jsonPath("$[1].role").value("STUDENT"));
+                    .andExpect(jsonPath("$[1].role").value("STUDENT"))
+                    .andExpect(jsonPath("$[1].title").value("일반 수강생"));
         }
 
         @Test

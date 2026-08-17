@@ -3,6 +3,7 @@ package kr.haedal.hoj.enrollment.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.haedal.hoj.enrollment.Enrollment;
 import kr.haedal.hoj.enrollment.EnrollmentRole;
+import kr.haedal.hoj.user.RoleTitle;
 import kr.haedal.hoj.user.dto.UserResponse;
 
 import java.time.Instant;
@@ -11,6 +12,7 @@ import java.time.Instant;
 public record MemberResponse(
         UserResponse user,
         @Schema(description = "이 분반에서의 역할") EnrollmentRole role,
+        @Schema(description = "직책 명칭 — 해구르르 / 교육운영진 / 일반 수강생") RoleTitle title,
         @Schema(description = "소속 등록 시각(UTC)") Instant enrolledAt
 ) {
     /** user가 fetch join 되어 있거나 트랜잭션 안에서 호출된다는 전제 */
@@ -18,6 +20,7 @@ public record MemberResponse(
         return new MemberResponse(
                 UserResponse.from(enrollment.getUser()),
                 enrollment.getRole(),
+                RoleTitle.of(enrollment.getUser(), enrollment.getRole()),
                 enrollment.getCreatedAt()
         );
     }

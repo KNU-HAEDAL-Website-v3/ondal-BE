@@ -5,6 +5,7 @@ import kr.haedal.hoj.cohort.dto.CohortResponse;
 import kr.haedal.hoj.enrollment.Enrollment;
 import kr.haedal.hoj.enrollment.EnrollmentRepository;
 import kr.haedal.hoj.enrollment.EnrollmentRole;
+import kr.haedal.hoj.user.RoleTitle;
 import kr.haedal.hoj.user.User;
 import kr.haedal.hoj.user.dto.UserSummary;
 import org.springframework.stereotype.Component;
@@ -53,7 +54,7 @@ public class CohortResponseAssembler {
         // 운영진은 이름만 — 학생에게 내려가는 응답이므로 loginId·globalRole 을 싣지 않는다 (UserSummary)
         List<UserSummary> operators = enrollments.stream()
                 .filter(Enrollment::isOperator)
-                .map(e -> UserSummary.from(e.getUser()))
+                .map(e -> UserSummary.of(e.getUser(), e.getRole()))
                 .sorted(Comparator.comparing(UserSummary::name))
                 .toList();
 
@@ -63,6 +64,7 @@ public class CohortResponseAssembler {
                 .findFirst()
                 .orElse(null);
 
+        RoleTitle myTitle = RoleTitle.of(viewer, myRole);
         boolean canManage = cohortAuthorizer.canManage(viewer, cohort, myRole);
 
         // 수강생 수는 운영진·관리자에게만 — 학생에게는 타인 정보(인원 포함)를 내려주지 않는다
@@ -71,6 +73,6 @@ public class CohortResponseAssembler {
                 ? (int) enrollments.stream().filter(e -> !e.isOperator()).count()
                 : null;
 
-        return CohortResponse.of(cohort, operators, studentCount, myRole, canManage);
+        return CohortResponse.of(cohort, operators, studentCount, myRole, myTitle, canManage);
     }
 }

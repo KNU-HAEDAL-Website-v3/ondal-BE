@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import kr.haedal.hoj.cohort.Cohort;
 import kr.haedal.hoj.cohort.CohortStatus;
 import kr.haedal.hoj.enrollment.EnrollmentRole;
+import kr.haedal.hoj.user.RoleTitle;
 import kr.haedal.hoj.user.dto.UserSummary;
 
 import java.time.Instant;
@@ -31,6 +32,9 @@ public record CohortResponse(
         @Schema(description = "요청자의 이 분반에서의 소속 역할. 비소속(ADMIN이 남의 분반을 볼 때)이면 null")
         EnrollmentRole myRole,
 
+        @Schema(description = "요청자의 직책 명칭 — 해구르르 / 교육운영진 / 일반 수강생. 홈 카드의 내 배지에 그대로 표시")
+        RoleTitle myTitle,
+
         @Schema(description = "운영 기능(과제 관리·수강생 배정·현황판) 진입 가능 여부. "
                 + "분반이 ACTIVE이고 (ADMIN이거나 OPERATOR)일 때 true. 프론트는 이 값만 보고 분기한다")
         boolean canManage
@@ -40,6 +44,7 @@ public record CohortResponse(
                                     List<UserSummary> operators,
                                     Integer studentCount,
                                     EnrollmentRole myRole,
+                                    RoleTitle myTitle,
                                     boolean canManage) {
         return new CohortResponse(
                 cohort.getId(),
@@ -50,6 +55,7 @@ public record CohortResponse(
                 operators,
                 studentCount,
                 myRole,
+                myTitle,
                 canManage
         );
     }

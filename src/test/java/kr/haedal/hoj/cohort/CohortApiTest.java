@@ -135,7 +135,9 @@ class CohortApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.studentCount").value(nullValue()))
                     .andExpect(jsonPath("$.operators", hasSize(1)))       // 운영진 이름은 학생에게도 공개 — 이름만
                     .andExpect(jsonPath("$.operators[0].name").value("op1"))
-                    .andExpect(jsonPath("$.operators[0].loginId").doesNotExist());
+                    .andExpect(jsonPath("$.operators[0].title").value("교육운영진"))
+                    .andExpect(jsonPath("$.operators[0].loginId").doesNotExist())
+                    .andExpect(jsonPath("$.myTitle").value("일반 수강생"));
         }
 
         @Test
@@ -146,6 +148,7 @@ class CohortApiTest extends ApiTestSupport {
             mockMvc.perform(get("/api/cohorts/{id}", id).session(login.member("op1")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.myRole").value("OPERATOR"))
+                    .andExpect(jsonPath("$.myTitle").value("교육운영진"))
                     .andExpect(jsonPath("$.canManage").value(true))
                     .andExpect(jsonPath("$.studentCount").value(2));
         }
@@ -156,8 +159,20 @@ class CohortApiTest extends ApiTestSupport {
             mockMvc.perform(get("/api/cohorts/{id}", id).session(login.admin()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.myRole").value(nullValue()))
+                    .andExpect(jsonPath("$.myTitle").value("해구르르"))
                     .andExpect(jsonPath("$.canManage").value(true))
                     .andExpect(jsonPath("$.studentCount").value(0));
+        }
+
+        @Test
+        void 임원이_운영진으로_소속돼_있으면_학생_화면에도_해구르르로_보인다() throws Exception {
+            long id = createCohort("C언어", "admin");   // 시더/LoginHelper 의 admin 계정을 운영진으로 지정
+            enrollStudent(id, "s1");
+            mockMvc.perform(get("/api/cohorts/{id}", id).session(login.member("s1")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.operators[0].name").value("관리자"))
+                    .andExpect(jsonPath("$.operators[0].title").value("해구르르"))
+                    .andExpect(jsonPath("$.operators[0].globalRole").doesNotExist());
         }
 
         @Test
