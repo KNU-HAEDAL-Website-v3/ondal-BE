@@ -21,11 +21,16 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	// API 문서(OpenAPI/Swagger UI). Boot BOM 관리 대상이 아니라 버전을 직접 적는다 — 3.x = Boot 4.x 라인.
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	// 테스트용 PostgreSQL(Testcontainers 2.x — 아티팩트명이 1.x와 다르다. 버전은 Boot BOM이 관리)
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

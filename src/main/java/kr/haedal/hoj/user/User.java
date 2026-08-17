@@ -48,7 +48,7 @@ public class User {
         this.createdAt = Instant.now();
     }
 
-    /** 일반 부원 생성 — 스텁 로그인의 find-or-create와 실제 홈페이지 첫 로그인이 공용으로 쓴다. */
+    /** 일반 부원 생성 — UserService.findOrCreateMember(스텁 로그인·운영진/수강생 배정 공용)와 실제 홈페이지 첫 로그인이 쓴다. */
     public static User member(String loginId, String name) {
         return new User(loginId, name, GlobalRole.MEMBER);
     }
