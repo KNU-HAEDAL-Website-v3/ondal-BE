@@ -1,9 +1,8 @@
 package kr.haedal.hoj.auth;
 
 import kr.haedal.hoj.user.User;
-import kr.haedal.hoj.user.UserRepository;
+import kr.haedal.hoj.user.UserService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 가짜 문 — loginId만 받고 검증 없이 통과시킨다. (개발 전용)
@@ -14,18 +13,16 @@ import org.springframework.transaction.annotation.Transactional;
  * 스텁은 '검증' 단계만 생략할 뿐, 나머지 흐름은 실물과 같게 유지한다.
  */
 @Service
-@Transactional
 public class StubAuthService implements AuthService {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
 
-    public StubAuthService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public StubAuthService(UserService userService) {
+        this.userService = userService;
     }
 
     @Override
     public User login(String loginId) {
-        return userRepository.findByLoginId(loginId)
-                .orElseGet(() -> userRepository.save(User.member(loginId, loginId)));
+        return userService.findOrCreateMember(loginId);
     }
 }
