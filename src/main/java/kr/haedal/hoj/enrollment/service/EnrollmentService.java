@@ -22,8 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * 소속(Enrollment) 관리 - 운영진 지정/해제, 내 분반 목록, 분반 명부.
- * 다음 슬라이스(수강생 배정)는 assign/remove 를 EnrollmentRole.STUDENT 로 호출하는 엔드포인트만 추가하면 된다.
+ * 소속(Enrollment) 관리 - 내 분반 목록, 분반 명부, 수강생 배정/제외, 운영진 지정/해제.
  *
  * 규약: 분반 스코프의 "쓰기"는 첫 줄에서 cohort.ensureActive() - 보관된 분반은 409.
  */
@@ -70,7 +69,16 @@ public class EnrollmentService {
     }
 
     /**
-     * loginId 목록을 role로 일괄 소속시킨다 (분반 생성 시 운영진 지정, 다음 슬라이스의 수강생 명단 붙여넣기).
+     * 수강생 일괄 배정 (UC-O2, 운영진 이상 API). 명단 붙여넣기 → 갱신된 명부 반환.
+     * FE가 배정 직후 명부를 다시 조회할 필요 없게, 응답을 GET /members 와 같은 모양으로 준다.
+     */
+    public List<MemberResponse> assignStudents(Long cohortId, List<String> loginIds) {
+        assign(cohortId, loginIds, EnrollmentRole.STUDENT);
+        return findMembers(cohortId);
+    }
+
+    /**
+     * loginId 목록을 role로 일괄 소속시킨다 (분반 생성 시 운영진 지정, 수강생 명단 붙여넣기).
      * - 없는 사람은 만들고(find-or-create), 같은 role이면 그대로(멱등), 다른 role로 이미 소속이면 409 - 역할을 바꾸지 않는다.
      */
     public void assign(Long cohortId, List<String> loginIds, EnrollmentRole role) {

@@ -70,12 +70,14 @@ public abstract class ApiTestSupport {
         return readJson(result).get("id").asLong();
     }
 
-    /** 수강생 배정 API 는 다음 슬라이스라, 지금은 리포지토리로 직접 소속시킨다 */
-    protected User enrollStudent(long cohortId, String loginId) {
-        Cohort cohort = cohortRepository.findById(cohortId).orElseThrow();
-        User user = login.memberUser(loginId);
-        enrollmentRepository.save(Enrollment.create(cohort, user, EnrollmentRole.STUDENT));
-        return user;
+    /** 수강생 배정 API(운영진 이상)로 소속시킨다 — admin 세션 사용. ACTIVE 분반에만 쓸 것(보관이면 409) */
+    protected User enrollStudent(long cohortId, String loginId) throws Exception {
+        mockMvc.perform(post("/api/cohorts/{id}/students", cohortId)
+                        .session(login.admin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("loginIds", List.of(loginId)))))
+                .andExpect(status().isOk());
+        return login.memberUser(loginId);
     }
 
     /** 관리자 API 로 보관 처리 */

@@ -14,9 +14,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import kr.haedal.hoj.common.error.ConflictException;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
+import java.util.Map;
+import org.springframework.http.MediaType;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -238,4 +241,182 @@ class EnrollmentApiTest extends ApiTestSupport {
             assertThat(enrollmentRepository.findAllByCohortIdWithUser(id)).isEmpty();
         }
     }
+
+    @Nested
+    @DisplayName("POST /api/cohorts/{cohortId}/students — 수강생 일괄 배정 (#11)")
+    class AssignStudents {
+
+        @Test
+        void 미로그인이면_401() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s1")))))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void 같은_반_수강생이면_403() throws Exception {
+            long id = createCohort("C언어", "op1");
+            enrollStudent(id, "s1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.member("s1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s2")))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        }
+
+        @Test
+        void 다른_반_운영진이면_403() throws Exception {
+            createCohort("다른반", "otherOp");
+            long mine = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", mine)
+                            .session(login.member("otherOp"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s1")))))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void 자기_반_운영진은_배정하고_갱신된_명부를_받는다() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s1", "s2", "s1"))))) // 중복은 한 번만
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(3)))                       // op1 + s1 + s2
+                    .andExpect(jsonPath("$[0].role").value("OPERATOR"))          // 명부 정렬: 운영진 먼저
+                    .andExpect(jsonPath("$[1].role").value("STUDENT"))
+                    .andExpect(jsonPath("$[1].title").value("일반 수강생"))
+                    .andExpect(jsonPath("$[1].user.loginId").value("s1"));       // 명부는 운영진 이상만 보므로 loginId 포함
+        }
+
+        @Test
+        void 관리자도_배정할_수_있다() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.admin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s1")))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(2)));
+        }
+
+        @Test
+        void 이미_수강생인_사람을_다시_배정해도_그대로_200_멱등() throws Exception {
+            long id = createCohort("C언어", "op1");
+            enrollStudent(id, "s1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s1")))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(2)));
+        }
+
+        @Test
+        void 운영진인_loginId가_섞여_있으면_409_역할을_바꾸지_않는다() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.admin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("op1")))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("CONFLICT"));
+        }
+
+        @Test
+        void 보관된_분반이면_409() throws Exception {
+            long id = createCohort("C언어", "op1");
+            archiveCohort(id);
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.admin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s1")))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("COHORT_ARCHIVED"));
+        }
+
+        @Test
+        void 빈_목록이면_400() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.admin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of()))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        }
+
+        @Test
+        void loginId가_50자를_넘으면_400() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/students", id)
+                            .session(login.admin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("x".repeat(51))))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void 없는_분반이면_404() throws Exception {
+            mockMvc.perform(post("/api/cohorts/{id}/students", 9999)
+                            .session(login.admin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("loginIds", List.of("s1")))))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/cohorts/{cohortId}/students/{loginId} — 수강생 제외 (#12)")
+    class RemoveStudent {
+
+        @Test
+        void 자기_반_운영진은_204_명부에서_사라진다() throws Exception {
+            long id = createCohort("C언어", "op1");
+            enrollStudent(id, "s1");
+            mockMvc.perform(delete("/api/cohorts/{id}/students/{loginId}", id, "s1").session(login.member("op1")))
+                    .andExpect(status().isNoContent());
+            assertThat(enrollmentRepository.findAllByCohortIdWithUser(id)).hasSize(1); // op1만 남는다
+        }
+
+        @Test
+        void 같은_반_수강생이면_403() throws Exception {
+            long id = createCohort("C언어", "op1");
+            enrollStudent(id, "s1");
+            mockMvc.perform(delete("/api/cohorts/{id}/students/{loginId}", id, "s1").session(login.member("s1")))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void 운영진_loginId를_지정하면_404_소속_유지() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(delete("/api/cohorts/{id}/students/{loginId}", id, "op1").session(login.admin()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+            assertThat(enrollmentRepository.findAllByCohortIdWithUser(id)).hasSize(1);
+        }
+
+        @Test
+        void 미소속이거나_모르는_loginId면_404() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(delete("/api/cohorts/{id}/students/{loginId}", id, "ghost").session(login.admin()))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void 보관된_분반이면_409_소속_유지() throws Exception {
+            long id = createCohort("C언어", "op1");
+            enrollStudent(id, "s1");
+            archiveCohort(id);
+            mockMvc.perform(delete("/api/cohorts/{id}/students/{loginId}", id, "s1").session(login.admin()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("COHORT_ARCHIVED"));
+            assertThat(enrollmentRepository.findAllByCohortIdWithUser(id)).hasSize(2);
+        }
+    }
 }
+
