@@ -5,7 +5,7 @@ import kr.haedal.hoj.user.service.UserService;
 import org.springframework.stereotype.Service;
 
 /**
- * 가짜 문 — loginId만 받고 검증 없이 통과시킨다. (개발 전용)
+ * 가짜 문 - loginId만 받고 검증 없이 통과시킨다. (개발 전용)
  *
  * find-or-create(없으면 MEMBER로 생성)인 이유:
  * 실제 홈페이지 연동에서도 "홈페이지에서 인증된 사람이 HOJ에 처음 오면

@@ -27,7 +27,7 @@ class EnrollmentApiTest extends ApiTestSupport {
     @Autowired EnrollmentService enrollmentService;
 
     @Nested
-    @DisplayName("GET /api/me/cohorts — 내 분반")
+    @DisplayName("GET /api/me/cohorts - 내 분반")
     class MyCohorts {
 
         @Test
@@ -84,7 +84,7 @@ class EnrollmentApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("GET /api/cohorts/{cohortId}/members — 명부")
+    @DisplayName("GET /api/cohorts/{cohortId}/members - 명부")
     class Members {
 
         @Test
@@ -116,7 +116,7 @@ class EnrollmentApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("PUT /api/cohorts/{cohortId}/operators/{loginId} — 운영진 지정")
+    @DisplayName("PUT /api/cohorts/{cohortId}/operators/{loginId} - 운영진 지정")
     class AssignOperator {
 
         @Test
@@ -182,7 +182,7 @@ class EnrollmentApiTest extends ApiTestSupport {
 
         @Test
         void assign은_다른_역할로_이미_소속이면_409이고_역할을_바꾸지_않는다() throws Exception {
-            // 이 분기는 다음 슬라이스(수강생 명단 배정)에서 API 로 도달한다 — 지금은 서비스 레벨로 고정해 둔다
+            // 이 분기는 다음 슬라이스(수강생 명단 배정)에서 API 로 도달한다 - 지금은 서비스 레벨로 고정해 둔다
             long id = createCohort("C언어", "op1");
             assertThatThrownBy(() -> enrollmentService.assign(id, List.of("op1"), EnrollmentRole.STUDENT))
                     .isInstanceOf(ConflictException.class);
@@ -192,7 +192,7 @@ class EnrollmentApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("DELETE /api/cohorts/{cohortId}/operators/{loginId} — 운영진 해제")
+    @DisplayName("DELETE /api/cohorts/{cohortId}/operators/{loginId} - 운영진 해제")
     class RemoveOperator {
 
         @Test

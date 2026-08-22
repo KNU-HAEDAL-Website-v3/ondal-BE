@@ -23,7 +23,7 @@ public class UserService {
     /**
      * loginId로 찾고, 없으면 MEMBER로 만든다.
      * 스텁 로그인(첫 로그인)과 운영진/수강생 배정(아직 로그인한 적 없는 부원을 loginId로 등록)이 공용으로 쓴다.
-     * 이름은 loginId로 임시 채운다 — 홈페이지 연동 후 실제 이름으로 갱신된다.
+     * 이름은 loginId로 임시 채운다 - 홈페이지 연동 후 실제 이름으로 갱신된다.
      */
     public User findOrCreateMember(String loginId) {
         if (loginId == null || loginId.isBlank() || loginId.length() > MAX_LOGIN_ID_LENGTH) {

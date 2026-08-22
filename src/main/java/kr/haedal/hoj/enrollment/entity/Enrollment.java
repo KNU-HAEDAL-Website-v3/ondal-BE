@@ -20,9 +20,9 @@ import java.time.Instant;
 /**
  * 소속: "이 사람은 이 분반에서 무엇인가". 한 사람은 한 분반에서 역할 하나(unique cohort+user).
  *
- * 하드 삭제되는 관계 테이블이며 다른 엔티티의 FK 대상이 아니다 —
+ * 하드 삭제되는 관계 테이블이며 다른 엔티티의 FK 대상이 아니다 -
  * 제출(Submission)은 (assignment_id, user_id)로 사용자를 직접 참조하고,
- * 대시보드의 행은 현재 Enrollment(STUDENT)에서 만든다. (docs: cohort/design.md §1)
+ * 대시보드의 행은 현재 Enrollment(STUDENT)에서 만든다. (docs: cohort/design.md 1절)
  */
 @Entity
 @Table(name = "enrollments",

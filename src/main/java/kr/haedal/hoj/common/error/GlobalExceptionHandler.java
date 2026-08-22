@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("INVALID_INPUT", e.getMessage()));
     }
 
-    /** @Valid 실패 — 요청 본문의 필드 검증 */
+    /** @Valid 실패 - 요청 본문의 필드 검증 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleInvalidBody(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
@@ -101,7 +101,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {
-        log.error("처리되지 않은 예외", e); // 원인은 서버 로그에만 — 내부 정보를 응답에 싣지 않는다
+        log.error("처리되지 않은 예외", e); // 원인은 서버 로그에만 - 내부 정보를 응답에 싣지 않는다
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("INTERNAL_ERROR", "서버 오류가 발생했습니다."));
     }

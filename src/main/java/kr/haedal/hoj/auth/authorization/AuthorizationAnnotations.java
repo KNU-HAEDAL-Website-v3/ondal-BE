@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * 핸들러의 "유효 권한 어노테이션" 하나를 고르는 규칙 — 인터셉터와 기동 검증기가 같은 규칙을 쓴다.
+ * 핸들러의 "유효 권한 어노테이션" 하나를 고르는 규칙 - 인터셉터와 기동 검증기가 같은 규칙을 쓴다.
  *
  * - 메서드에 하나라도 있으면 메서드 것, 없으면 클래스 것 (위치 우선). 클래스 @LoginOnly + 메서드 @AdminOnly 면 AdminOnly.
  * - 같은 위치(메서드 또는 클래스)에 3종 중 둘 이상이 있으면 설정 오류 → IllegalStateException (기동 검증에서 부팅 실패).
@@ -35,10 +35,10 @@ final class AuthorizationAnnotations {
             return single(onClass, "클래스 " + handlerMethod.getBeanType().getSimpleName());
         }
         throw new IllegalStateException("권한 어노테이션이 없는 API: " + handlerMethod
-                + " — @LoginOnly / @AdminOnly / @CohortRole 중 하나를 붙여야 한다.");
+                + " - @LoginOnly / @AdminOnly / @CohortRole 중 하나를 붙여야 한다.");
     }
 
-    /** 검증기용 — 예외 대신 문제 설명을 돌려준다 (null 이면 정상) */
+    /** 검증기용 - 예외 대신 문제 설명을 돌려준다 (null 이면 정상) */
     static String violation(HandlerMethod handlerMethod) {
         List<Annotation> onMethod = findAll(handlerMethod.getMethod());
         if (onMethod.size() > 1) {
@@ -56,7 +56,7 @@ final class AuthorizationAnnotations {
 
     private static Annotation single(List<Annotation> found, String where) {
         if (found.size() > 1) {
-            throw new IllegalStateException(where + " 에 권한 어노테이션이 둘 이상 (" + names(found) + ") — 하나만 달아야 한다.");
+            throw new IllegalStateException(where + " 에 권한 어노테이션이 둘 이상 (" + names(found) + ") - 하나만 달아야 한다.");
         }
         return found.get(0);
     }

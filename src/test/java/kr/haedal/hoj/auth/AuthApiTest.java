@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** 로그인 API 자체의 동작 — 다른 테스트는 LoginHelper 로 세션을 직접 만들므로 여기서만 실제 로그인을 탄다 */
+/** 로그인 API 자체의 동작 - 다른 테스트는 LoginHelper 로 세션을 직접 만들므로 여기서만 실제 로그인을 탄다 */
 class AuthApiTest extends ApiTestSupport {
 
     @Test

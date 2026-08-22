@@ -16,12 +16,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * 기동 시 검증 규칙의 단위 테스트 — 스프링 컨텍스트 없이 가짜 매핑으로 validate() 를 직접 호출한다.
+ * 기동 시 검증 규칙의 단위 테스트 - 스프링 컨텍스트 없이 가짜 매핑으로 validate() 를 직접 호출한다.
  * (실제 컨텍스트에서 위반이 있으면 다른 모든 @SpringBootTest 가 기동 실패로 함께 알려준다)
  */
 class AuthorizationMappingValidatorTest {
 
-    /** 테스트용 가짜 컨트롤러 — 메서드 이름이 곧 시나리오. 패키지가 kr.haedal.hoj 라 규칙 (e) 대상이다 */
+    /** 테스트용 가짜 컨트롤러 - 메서드 이름이 곧 시나리오. 패키지가 kr.haedal.hoj 라 규칙 (e) 대상이다 */
     static class FakeController {
         @LoginOnly public void loginOnlyOk() {}
         @AdminOnly public void adminOnlyOk() {}
@@ -33,7 +33,7 @@ class AuthorizationMappingValidatorTest {
         public void publicLogin() {}
     }
 
-    /** 클래스 레벨 @LoginOnly — 메서드에 있으면 메서드가 이긴다 */
+    /** 클래스 레벨 @LoginOnly - 메서드에 있으면 메서드가 이긴다 */
     @LoginOnly
     static class ClassLevelController {
         public void inheritsLoginOnly() {}
@@ -47,7 +47,7 @@ class AuthorizationMappingValidatorTest {
                 info("/api/me/cohorts"), handler("loginOnlyOk"),
                 info("/api/cohorts"), handler("adminOnlyOk"),
                 info("/api/cohorts/{cohortId}"), handler("cohortRoleOk"),
-                info("/api/auth/login"), handler("publicLogin"),        // 공개 경로 — 어노테이션 없어도 OK
+                info("/api/auth/login"), handler("publicLogin"),        // 공개 경로 - 어노테이션 없어도 OK
                 info("/api/things"), classLevel("inheritsLoginOnly"),   // 클래스 @LoginOnly 상속
                 info("/api/cohorts/{cohortId}/x"), classLevel("adminOverridesClass"),      // 메서드 @AdminOnly 가 이김 → (c) 충족
                 info("/api/cohorts/{cohortId}/y"), classLevel("cohortRoleOverridesClass")  // 메서드 @CohortRole 이 이김

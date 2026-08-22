@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  *
  * CohortService(분반 API)와 EnrollmentService(/api/me/cohorts)가 둘 다 쓰므로 별도 컴포넌트로 뺐다
  * (서비스끼리 서로 주입하면 순환이 생긴다). 분반 N개에 대해 Enrollment 조회는 1번만 한다.
- * 호출하는 쪽의 트랜잭션 안에서 실행된다는 전제 — 자체 @Transactional은 없다.
+ * 호출하는 쪽의 트랜잭션 안에서 실행된다는 전제 - 자체 @Transactional은 없다.
  */
 @Component
 public class CohortResponseAssembler {
@@ -53,7 +53,7 @@ public class CohortResponseAssembler {
     }
 
     private CohortResponse toResponse(Cohort cohort, List<Enrollment> enrollments, User viewer) {
-        // 운영진은 이름만 — 학생에게 내려가는 응답이므로 loginId·globalRole 을 싣지 않는다 (UserSummary)
+        // 운영진은 이름만 - 학생에게 내려가는 응답이므로 loginId·globalRole 을 싣지 않는다 (UserSummary)
         List<UserSummary> operators = enrollments.stream()
                 .filter(Enrollment::isOperator)
                 .map(e -> UserSummary.of(e.getUser(), e.getRole()))
@@ -69,7 +69,7 @@ public class CohortResponseAssembler {
         RoleTitle myTitle = RoleTitle.of(viewer, myRole);
         boolean canManage = cohortAuthorizer.canManage(viewer, cohort, myRole);
 
-        // 수강생 수는 운영진·관리자에게만 — 학생에게는 타인 정보(인원 포함)를 내려주지 않는다
+        // 수강생 수는 운영진·관리자에게만 - 학생에게는 타인 정보(인원 포함)를 내려주지 않는다
         boolean canSeeCount = viewer.isAdmin() || myRole == EnrollmentRole.OPERATOR;
         Integer studentCount = canSeeCount
                 ? (int) enrollments.stream().filter(e -> !e.isOperator()).count()
