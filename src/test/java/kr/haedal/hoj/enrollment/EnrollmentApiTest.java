@@ -243,7 +243,7 @@ class EnrollmentApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("POST /api/cohorts/{cohortId}/students — 수강생 일괄 배정 (#11)")
+    @DisplayName("POST /api/cohorts/{cohortId}/students - 수강생 일괄 배정 (#11)")
     class AssignStudents {
 
         @Test
@@ -371,7 +371,7 @@ class EnrollmentApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("DELETE /api/cohorts/{cohortId}/students/{loginId} — 수강생 제외 (#12)")
+    @DisplayName("DELETE /api/cohorts/{cohortId}/students/{loginId} - 수강생 제외 (#12)")
     class RemoveStudent {
 
         @Test

@@ -70,7 +70,7 @@ public abstract class ApiTestSupport {
         return readJson(result).get("id").asLong();
     }
 
-    /** 수강생 배정 API(운영진 이상)로 소속시킨다 — admin 세션 사용. ACTIVE 분반에만 쓸 것(보관이면 409) */
+    /** 수강생 배정 API(운영진 이상)로 소속시킨다 - admin 세션 사용. ACTIVE 분반에만 쓸 것(보관이면 409) */
     protected User enrollStudent(long cohortId, String loginId) throws Exception {
         mockMvc.perform(post("/api/cohorts/{id}/students", cohortId)
                         .session(login.admin())
