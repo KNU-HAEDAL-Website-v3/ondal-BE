@@ -1,6 +1,6 @@
-package kr.haedal.hoj.auth;
+package kr.haedal.hoj.auth.service;
 
-import kr.haedal.hoj.user.User;
+import kr.haedal.hoj.user.entity.User;
 
 /**
  * "이 loginId가 진짜 그 사람인지" 신원 확인을 담당하는 경계.

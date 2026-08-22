@@ -1,7 +1,7 @@
-package kr.haedal.hoj.auth;
+package kr.haedal.hoj.auth.service;
 
-import kr.haedal.hoj.user.User;
-import kr.haedal.hoj.user.UserService;
+import kr.haedal.hoj.user.entity.User;
+import kr.haedal.hoj.user.service.UserService;
 import org.springframework.stereotype.Service;
 
 /**

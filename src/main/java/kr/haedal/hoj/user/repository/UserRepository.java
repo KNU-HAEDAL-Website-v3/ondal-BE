@@ -1,4 +1,6 @@
-package kr.haedal.hoj.user;
+package kr.haedal.hoj.user.repository;
+
+import kr.haedal.hoj.user.entity.User;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

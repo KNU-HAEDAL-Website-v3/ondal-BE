@@ -1,5 +1,9 @@
 package kr.haedal.hoj.enrollment;
 
+import kr.haedal.hoj.enrollment.entity.Enrollment;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.enrollment.service.EnrollmentService;
+
 import kr.haedal.hoj.support.ApiTestSupport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

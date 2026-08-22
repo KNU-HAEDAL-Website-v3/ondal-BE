@@ -1,9 +1,9 @@
 package kr.haedal.hoj.user.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import kr.haedal.hoj.enrollment.EnrollmentRole;
-import kr.haedal.hoj.user.RoleTitle;
-import kr.haedal.hoj.user.User;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.user.entity.RoleTitle;
+import kr.haedal.hoj.user.entity.User;
 
 /**
  * 타인에게 보여줘도 되는 최소 사용자 정보 — id(목록 키 용도), 이름, 직책 명칭.

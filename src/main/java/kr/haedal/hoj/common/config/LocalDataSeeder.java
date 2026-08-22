@@ -1,13 +1,13 @@
 package kr.haedal.hoj.common.config;
 
-import kr.haedal.hoj.cohort.Cohort;
-import kr.haedal.hoj.cohort.CohortRepository;
-import kr.haedal.hoj.enrollment.Enrollment;
-import kr.haedal.hoj.enrollment.EnrollmentRepository;
-import kr.haedal.hoj.enrollment.EnrollmentRole;
-import kr.haedal.hoj.user.User;
-import kr.haedal.hoj.user.UserRepository;
-import kr.haedal.hoj.user.UserService;
+import kr.haedal.hoj.cohort.entity.Cohort;
+import kr.haedal.hoj.cohort.repository.CohortRepository;
+import kr.haedal.hoj.enrollment.entity.Enrollment;
+import kr.haedal.hoj.enrollment.repository.EnrollmentRepository;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.user.entity.User;
+import kr.haedal.hoj.user.repository.UserRepository;
+import kr.haedal.hoj.user.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;

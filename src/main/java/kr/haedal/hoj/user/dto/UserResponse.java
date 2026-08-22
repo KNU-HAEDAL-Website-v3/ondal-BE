@@ -1,7 +1,7 @@
 package kr.haedal.hoj.user.dto;
 
-import kr.haedal.hoj.user.GlobalRole;
-import kr.haedal.hoj.user.User;
+import kr.haedal.hoj.user.entity.GlobalRole;
+import kr.haedal.hoj.user.entity.User;
 
 /**
  * 엔티티를 API에 직접 노출하지 않고 응답 전용 DTO로 감싼다.

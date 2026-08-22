@@ -1,4 +1,4 @@
-package kr.haedal.hoj.user;
+package kr.haedal.hoj.user.entity;
 
 /**
  * 전역 역할 — "사람에게" 붙는 속성.

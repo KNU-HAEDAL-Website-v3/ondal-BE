@@ -1,15 +1,19 @@
-package kr.haedal.hoj.enrollment;
+package kr.haedal.hoj.enrollment.service;
 
-import kr.haedal.hoj.cohort.Cohort;
-import kr.haedal.hoj.cohort.CohortRepository;
-import kr.haedal.hoj.cohort.CohortResponseAssembler;
+import kr.haedal.hoj.enrollment.entity.Enrollment;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.enrollment.repository.EnrollmentRepository;
+
+import kr.haedal.hoj.cohort.entity.Cohort;
+import kr.haedal.hoj.cohort.repository.CohortRepository;
+import kr.haedal.hoj.cohort.service.CohortResponseAssembler;
 import kr.haedal.hoj.cohort.dto.CohortResponse;
 import kr.haedal.hoj.common.error.ConflictException;
 import kr.haedal.hoj.common.error.NotFoundException;
 import kr.haedal.hoj.enrollment.dto.MemberResponse;
-import kr.haedal.hoj.user.User;
-import kr.haedal.hoj.user.UserRepository;
-import kr.haedal.hoj.user.UserService;
+import kr.haedal.hoj.user.entity.User;
+import kr.haedal.hoj.user.repository.UserRepository;
+import kr.haedal.hoj.user.service.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

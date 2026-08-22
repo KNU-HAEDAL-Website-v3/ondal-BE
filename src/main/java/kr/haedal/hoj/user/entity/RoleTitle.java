@@ -1,6 +1,6 @@
-package kr.haedal.hoj.user;
+package kr.haedal.hoj.user.entity;
 
-import kr.haedal.hoj.enrollment.EnrollmentRole;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
 import com.fasterxml.jackson.annotation.JsonValue; // Jackson 3 에서도 어노테이션 패키지는 com.fasterxml 유지
 
 /**

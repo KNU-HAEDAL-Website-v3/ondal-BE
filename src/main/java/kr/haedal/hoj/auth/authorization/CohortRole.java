@@ -1,6 +1,6 @@
 package kr.haedal.hoj.auth.authorization;
 
-import kr.haedal.hoj.enrollment.EnrollmentRole;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

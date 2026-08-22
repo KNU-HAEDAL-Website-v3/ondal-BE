@@ -1,6 +1,6 @@
 package kr.haedal.hoj.auth.authorization;
 
-import kr.haedal.hoj.enrollment.EnrollmentRole;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;

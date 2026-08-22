@@ -1,4 +1,4 @@
-package kr.haedal.hoj.enrollment;
+package kr.haedal.hoj.enrollment.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,8 +12,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import kr.haedal.hoj.cohort.Cohort;
-import kr.haedal.hoj.user.User;
+import kr.haedal.hoj.cohort.entity.Cohort;
+import kr.haedal.hoj.user.entity.User;
 
 import java.time.Instant;
 
