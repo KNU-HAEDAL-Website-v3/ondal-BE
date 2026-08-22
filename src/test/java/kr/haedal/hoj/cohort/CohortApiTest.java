@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CohortApiTest extends ApiTestSupport {
 
     @Nested
-    @DisplayName("POST /api/cohorts — 분반 생성")
+    @DisplayName("POST /api/cohorts - 분반 생성")
     class Create {
 
         @Test
@@ -66,7 +66,7 @@ class CohortApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.status").value("ACTIVE"))
                     .andExpect(jsonPath("$.operators", hasSize(2)))
                     .andExpect(jsonPath("$.operators[*].name").value(containsInAnyOrder("op1", "op2")))   // 스텁 로그인은 name == loginId
-                    .andExpect(jsonPath("$.operators[0].loginId").doesNotExist())                     // 학생에게도 내려가는 응답 — loginId·globalRole 없음
+                    .andExpect(jsonPath("$.operators[0].loginId").doesNotExist())                     // 학생에게도 내려가는 응답 - loginId·globalRole 없음
                     .andExpect(jsonPath("$.operators[0].globalRole").doesNotExist())
                     .andExpect(jsonPath("$.studentCount").value(0))
                     .andExpect(jsonPath("$.myRole").value(nullValue()))   // 관리자는 비소속
@@ -113,7 +113,7 @@ class CohortApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("GET /api/cohorts/{cohortId} — 분반 상세 (소속자)")
+    @DisplayName("GET /api/cohorts/{cohortId} - 분반 상세 (소속자)")
     class GetOne {
 
         @Test
@@ -133,7 +133,7 @@ class CohortApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.myRole").value("STUDENT"))
                     .andExpect(jsonPath("$.canManage").value(false))
                     .andExpect(jsonPath("$.studentCount").value(nullValue()))
-                    .andExpect(jsonPath("$.operators", hasSize(1)))       // 운영진 이름은 학생에게도 공개 — 이름만
+                    .andExpect(jsonPath("$.operators", hasSize(1)))       // 운영진 이름은 학생에게도 공개 - 이름만
                     .andExpect(jsonPath("$.operators[0].name").value("op1"))
                     .andExpect(jsonPath("$.operators[0].title").value("교육운영진"))
                     .andExpect(jsonPath("$.operators[0].loginId").doesNotExist())
@@ -183,7 +183,7 @@ class CohortApiTest extends ApiTestSupport {
             mockMvc.perform(get("/api/cohorts/abc").session(login.admin()))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-            // @AdminOnly 경로는 인터셉터가 아니라 @PathVariable 바인딩에서 걸린다 — 역시 400
+            // @AdminOnly 경로는 인터셉터가 아니라 @PathVariable 바인딩에서 걸린다 - 역시 400
             mockMvc.perform(post("/api/cohorts/abc/archive").session(login.admin()))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
@@ -217,7 +217,7 @@ class CohortApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("GET /api/cohorts — 관리자 목록")
+    @DisplayName("GET /api/cohorts - 관리자 목록")
     class ListAll {
 
         @Test
@@ -254,7 +254,7 @@ class CohortApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("PUT /api/cohorts/{cohortId} — 수정")
+    @DisplayName("PUT /api/cohorts/{cohortId} - 수정")
     class Update {
 
         @Test
@@ -272,7 +272,7 @@ class CohortApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.name").value("2026-2 C언어 (수정)"))
                     .andExpect(jsonPath("$.description").value("바뀜"));
 
-            // 별도 요청으로 재조회 — 더티체킹이 실제로 flush 됐는지
+            // 별도 요청으로 재조회 - 더티체킹이 실제로 flush 됐는지
             mockMvc.perform(get("/api/cohorts/{id}", id).session(login.admin()))
                     .andExpect(jsonPath("$.name").value("2026-2 C언어 (수정)"))
                     .andExpect(jsonPath("$.description").value("바뀜"));
@@ -291,7 +291,7 @@ class CohortApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("POST /api/cohorts/{cohortId}/archive · /restore — 보관/해제")
+    @DisplayName("POST /api/cohorts/{cohortId}/archive · /restore - 보관/해제")
     class ArchiveRestore {
 
         @Test

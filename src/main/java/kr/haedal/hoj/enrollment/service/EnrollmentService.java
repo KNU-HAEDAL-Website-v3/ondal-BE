@@ -22,9 +22,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * 소속(Enrollment) 관리 — 내 분반 목록, 분반 명부, 수강생 배정/제외, 운영진 지정/해제.
+ * 소속(Enrollment) 관리 - 내 분반 목록, 분반 명부, 수강생 배정/제외, 운영진 지정/해제.
  *
- * 규약: 분반 스코프의 "쓰기"는 첫 줄에서 cohort.ensureActive() — 보관된 분반은 409.
+ * 규약: 분반 스코프의 "쓰기"는 첫 줄에서 cohort.ensureActive() - 보관된 분반은 409.
  */
 @Service
 @Transactional
@@ -48,7 +48,7 @@ public class EnrollmentService {
         this.assembler = assembler;
     }
 
-    /** 내가 소속된 모든 분반 — 보관된 분반도 포함(status로 구분). ACTIVE가 먼저, 그 안에서는 최신순. */
+    /** 내가 소속된 모든 분반 - 보관된 분반도 포함(status로 구분). ACTIVE가 먼저, 그 안에서는 최신순. */
     @Transactional(readOnly = true)
     public List<CohortResponse> findMyCohorts(User me) {
         List<Cohort> cohorts = enrollmentRepository.findAllByUserIdWithCohort(me.getId()).stream()
@@ -79,7 +79,7 @@ public class EnrollmentService {
 
     /**
      * loginId 목록을 role로 일괄 소속시킨다 (분반 생성 시 운영진 지정, 수강생 명단 붙여넣기).
-     * - 없는 사람은 만들고(find-or-create), 같은 role이면 그대로(멱등), 다른 role로 이미 소속이면 409 — 역할을 바꾸지 않는다.
+     * - 없는 사람은 만들고(find-or-create), 같은 role이면 그대로(멱등), 다른 role로 이미 소속이면 409 - 역할을 바꾸지 않는다.
      */
     public void assign(Long cohortId, List<String> loginIds, EnrollmentRole role) {
         Cohort cohort = requireCohort(cohortId);
@@ -100,7 +100,7 @@ public class EnrollmentService {
 
     /**
      * 운영진 지정 (ADMIN 전용 API). 미소속이면 OPERATOR로 소속시키고, STUDENT면 승격, 이미 OPERATOR면 그대로. 멱등.
-     * 승격은 이 경로 하나뿐이다 — 강등 API는 없다 (해제 후 다시 수강생으로 배정).
+     * 승격은 이 경로 하나뿐이다 - 강등 API는 없다 (해제 후 다시 수강생으로 배정).
      */
     public MemberResponse promoteToOperator(Long cohortId, String loginId) {
         Cohort cohort = requireCohort(cohortId);
@@ -115,7 +115,7 @@ public class EnrollmentService {
     }
 
     /**
-     * 소속 해제. expected 역할의 Enrollment만 지운다 — /operators/{loginId} 는 OPERATOR만, /students/{loginId} 는 STUDENT만.
+     * 소속 해제. expected 역할의 Enrollment만 지운다 - /operators/{loginId} 는 OPERATOR만, /students/{loginId} 는 STUDENT만.
      * 대상이 없거나(미소속·모르는 loginId) 역할이 다르면 404 (규약: 삭제 = 204, 대상 없으면 404).
      */
     public void remove(Long cohortId, String loginId, EnrollmentRole expected) {

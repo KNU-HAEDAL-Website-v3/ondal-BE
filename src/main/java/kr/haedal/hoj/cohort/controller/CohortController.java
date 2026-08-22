@@ -28,11 +28,11 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * 분반 API — 이후 모든 도메인 컨트롤러의 기준 패턴.
+ * 분반 API - 이후 모든 도메인 컨트롤러의 기준 패턴.
  * 메서드마다: 권한 어노테이션 → (검증 @Valid) → 서비스 호출 → 서비스가 준 DTO 반환. 그 외 로직 없음.
  * 이 컨트롤러는 CohortService만 주입한다. 소속(운영진·명부·내 분반)은 EnrollmentController.
  */
-@Tag(name = "Cohort", description = "분반 — 생성·수정·보관은 관리자(ADMIN), 조회는 소속자")
+@Tag(name = "Cohort", description = "분반 - 생성·수정·보관은 관리자(ADMIN), 조회는 소속자")
 @RestController
 @RequestMapping("/api/cohorts")
 public class CohortController {
@@ -43,7 +43,7 @@ public class CohortController {
         this.cohortService = cohortService;
     }
 
-    @Operation(summary = "[관리자] 분반 목록 — 기본은 진행 중(ACTIVE), 보관함은 ?status=ARCHIVED")
+    @Operation(summary = "[관리자] 분반 목록 - 기본은 진행 중(ACTIVE), 보관함은 ?status=ARCHIVED")
     @AdminOnly
     @GetMapping
     public List<CohortResponse> list(@RequestParam(defaultValue = "ACTIVE") CohortStatus status,
@@ -61,7 +61,7 @@ public class CohortController {
         return ResponseEntity.created(URI.create("/api/cohorts/" + created.id())).body(created);
     }
 
-    @Operation(summary = "분반 상세 — 소속자(운영진·수강생) 또는 관리자")
+    @Operation(summary = "분반 상세 - 소속자(운영진·수강생) 또는 관리자")
     @CohortRole(EnrollmentRole.STUDENT)
     @GetMapping("/{cohortId}")
     public CohortResponse get(@PathVariable Long cohortId, @LoginUser User me) {

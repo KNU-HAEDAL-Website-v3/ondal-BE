@@ -14,7 +14,7 @@ import java.time.Instant;
 
 /**
  * 분반(UI 용어) = Cohort(모델명). "2026-2 C언어"처럼 학기·트랙 단위로 열리는 반.
- * 소속(누가 이 반의 운영진/수강생인지)은 Enrollment가 담당한다 — 이 엔티티는 컬렉션 매핑을 갖지 않는다.
+ * 소속(누가 이 반의 운영진/수강생인지)은 Enrollment가 담당한다 - 이 엔티티는 컬렉션 매핑을 갖지 않는다.
  *
  * 엔티티 규약 (이후 도메인이 그대로 따른다):
  * - protected 기본 생성자(JPA용) + private 전체 생성자 + 정적 팩토리 create(...)
@@ -57,18 +57,18 @@ public class Cohort {
         return new Cohort(name, description);
     }
 
-    /** PUT 전체 교체 — 이름·설명을 한 번에 바꾼다 */
+    /** PUT 전체 교체 - 이름·설명을 한 번에 바꾼다 */
     public void update(String name, String description) {
         this.name = name;
         this.description = description;
     }
 
-    /** 멱등 — 이미 보관이어도 예외 없음 */
+    /** 멱등 - 이미 보관이어도 예외 없음 */
     public void archive() {
         this.status = CohortStatus.ARCHIVED;
     }
 
-    /** 멱등 — 이미 활성이어도 예외 없음 */
+    /** 멱등 - 이미 활성이어도 예외 없음 */
     public void restore() {
         this.status = CohortStatus.ACTIVE;
     }

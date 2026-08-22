@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 테스트에서 "이 사람으로 로그인된 상태"를 만든다.
- * 실제 로그인 API를 부르지 않고 세션 속성을 직접 넣는다 — 인증 방식이 홈페이지 연동으로 바뀌어도 이 헬퍼는 그대로다.
+ * 실제 로그인 API를 부르지 않고 세션 속성을 직접 넣는다 - 인증 방식이 홈페이지 연동으로 바뀌어도 이 헬퍼는 그대로다.
  * (로그인 API 자체의 동작은 AuthApiTest 가 따로 검증한다)
  *
  * 사용: mockMvc.perform(get("/api/me/cohorts").session(login.member("student1")))
@@ -34,7 +34,7 @@ public class LoginHelper {
         return as(memberUser(loginId));
     }
 
-    /** "admin" ADMIN 계정을 (없으면 만들고) 로그인된 세션으로 — permissions.md §4 부트스트랩의 테스트 버전 */
+    /** "admin" ADMIN 계정을 (없으면 만들고) 로그인된 세션으로 - permissions.md 4절 부트스트랩의 테스트 버전 */
     public MockHttpSession admin() {
         return as(adminUser());
     }

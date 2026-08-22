@@ -1,7 +1,7 @@
 package kr.haedal.hoj.auth;
 
 /**
- * 로그인 없이 호출 가능한 /api 경로 — 단 하나의 목록.
+ * 로그인 없이 호출 가능한 /api 경로 - 단 하나의 목록.
  * WebConfig(인터셉터 제외 목록)와 AuthorizationMappingValidator(기동 시 검증)가 같이 참조한다.
  * 여기 없는 /api/** 는 전부 로그인 필수 + 권한 어노테이션 필수다.
  */

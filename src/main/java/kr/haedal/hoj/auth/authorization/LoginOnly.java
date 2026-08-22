@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * "로그인만 되어 있으면 누구나" — 분반 권한과 무관한 API에 붙인다. (예: GET /api/me/cohorts, GET /api/auth/me)
+ * "로그인만 되어 있으면 누구나" - 분반 권한과 무관한 API에 붙인다. (예: GET /api/me/cohorts, GET /api/auth/me)
  *
  * /api/** 의 모든 핸들러는 @LoginOnly · @AdminOnly · @CohortRole 중 하나를 반드시 단다.
  * 하나도 없으면 기동 시 AuthorizationMappingValidator가 부팅을 막고,

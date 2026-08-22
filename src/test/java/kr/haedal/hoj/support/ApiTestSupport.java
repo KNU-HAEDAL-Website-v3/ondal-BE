@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * - PostgreSQL 은 Testcontainers 로 1번 띄우고, 매 테스트 후 DatabaseCleaner 가 전부 비운다
  * - 인증/권한 상태는 LoginHelper 로 만든다 (login.admin(), login.member("x"))
  *
- * 이 파일과 support/ 의 나머지는 PM 담당 — 슬라이스 테스트를 쓰는 사람은 수정하지 않는다.
+ * 이 파일과 support/ 의 나머지는 PM 담당 - 슬라이스 테스트를 쓰는 사람은 수정하지 않는다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -70,7 +70,7 @@ public abstract class ApiTestSupport {
         return readJson(result).get("id").asLong();
     }
 
-    /** 수강생 배정 API(운영진 이상)로 소속시킨다 — admin 세션 사용. ACTIVE 분반에만 쓸 것(보관이면 409) */
+    /** 수강생 배정 API(운영진 이상)로 소속시킨다 - admin 세션 사용. ACTIVE 분반에만 쓸 것(보관이면 409) */
     protected User enrollStudent(long cohortId, String loginId) throws Exception {
         mockMvc.perform(post("/api/cohorts/{id}/students", cohortId)
                         .session(login.admin())

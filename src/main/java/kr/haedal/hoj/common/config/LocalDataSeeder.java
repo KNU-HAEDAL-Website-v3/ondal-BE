@@ -17,9 +17,9 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * local 프로필 전용 부트스트랩 — permissions.md §4 "최초 관리자"의 개발 환경 버전 + 프론트 개발용 샘플 분반.
+ * local 프로필 전용 부트스트랩 - permissions.md 4절 "최초 관리자"의 개발 환경 버전 + 프론트 개발용 샘플 분반.
  * 운영 배포에서는 이 시더가 돌지 않으며, 실제 계정에 수동 SQL로 ADMIN을 지정한다.
- * 테스트(@ActiveProfiles("test"))에서도 돌지 않는다 — 테스트 픽스처는 각 테스트가 직접 만든다.
+ * 테스트(@ActiveProfiles("test"))에서도 돌지 않는다 - 테스트 픽스처는 각 테스트가 직접 만든다.
  *
  * 만드는 계정: admin(ADMIN) / operator1 / student1, student2, student3 (전부 스텁 로그인으로 바로 로그인 가능)
  * 만드는 분반: "2026-2 C언어"(ACTIVE: operator1 + student1~3), "2026-1 파이썬"(ARCHIVED: student1)

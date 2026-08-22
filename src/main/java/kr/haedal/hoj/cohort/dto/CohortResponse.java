@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * 분반 응답 — 목록·단건·생성·수정 응답이 전부 이 하나의 모양이다.
+ * 분반 응답 - 목록·단건·생성·수정 응답이 전부 이 하나의 모양이다.
  * 요청자(viewer)에 따라 달라지는 필드(myRole, canManage, studentCount)가 있으므로
  * 항상 CohortResponseAssembler를 통해 만든다 (엔티티만으로는 만들 수 없다).
  */
@@ -22,7 +22,7 @@ public record CohortResponse(
         CohortStatus status,
         Instant createdAt,
 
-        @Schema(description = "이 분반의 운영진 — id와 이름만. 학생에게 공개되는 유일한 타인 정보이므로 loginId·globalRole 은 내려주지 않는다. "
+        @Schema(description = "이 분반의 운영진 - id와 이름만. 학생에게 공개되는 유일한 타인 정보이므로 loginId·globalRole 은 내려주지 않는다. "
                 + "프론트: 이름을 다른 색으로 표시, 클릭 시 팝업에 이름 + 직책('교육 운영진')")
         List<UserSummary> operators,
 
@@ -32,7 +32,7 @@ public record CohortResponse(
         @Schema(description = "요청자의 이 분반에서의 소속 역할. 비소속(ADMIN이 남의 분반을 볼 때)이면 null")
         EnrollmentRole myRole,
 
-        @Schema(description = "요청자의 직책 명칭 — 해구르르 / 교육운영진 / 일반 수강생. 홈 카드의 내 배지에 그대로 표시")
+        @Schema(description = "요청자의 직책 명칭 - 해구르르 / 교육운영진 / 일반 수강생. 홈 카드의 내 배지에 그대로 표시")
         RoleTitle myTitle,
 
         @Schema(description = "운영 기능(과제 관리·수강생 배정·현황판) 진입 가능 여부. "

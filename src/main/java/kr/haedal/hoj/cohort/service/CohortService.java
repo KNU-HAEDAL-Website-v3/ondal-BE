@@ -17,9 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * 분반 서비스 — 이후 모든 도메인 서비스의 기준 패턴.
+ * 분반 서비스 - 이후 모든 도메인 서비스의 기준 패턴.
  * - 클래스 레벨 @Transactional, 조회만 readOnly
- * - 응답 DTO는 서비스가 만들어 돌려준다 (컨트롤러는 엔티티를 받지 않는다 — open-in-view=false)
+ * - 응답 DTO는 서비스가 만들어 돌려준다 (컨트롤러는 엔티티를 받지 않는다 - open-in-view=false)
  * - 엔티티 조회 실패는 NotFoundException, 보관 분반 쓰기는 ensureActive()
  */
 @Service
@@ -38,7 +38,7 @@ public class CohortService {
         this.assembler = assembler;
     }
 
-    /** 관리자용 전체 목록 (상태별). 기본은 ACTIVE — 보관 분반은 ?status=ARCHIVED 로 따로 본다. */
+    /** 관리자용 전체 목록 (상태별). 기본은 ACTIVE - 보관 분반은 ?status=ARCHIVED 로 따로 본다. */
     @Transactional(readOnly = true)
     public List<CohortResponse> findAll(CohortStatus status, User viewer) {
         return assembler.toResponses(cohortRepository.findAllByStatusOrderByCreatedAtDesc(status), viewer);
