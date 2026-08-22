@@ -1,12 +1,14 @@
-package kr.haedal.hoj.cohort;
+package kr.haedal.hoj.cohort.service;
+
+import kr.haedal.hoj.cohort.entity.Cohort;
 
 import kr.haedal.hoj.auth.authorization.CohortAuthorizer;
 import kr.haedal.hoj.cohort.dto.CohortResponse;
-import kr.haedal.hoj.enrollment.Enrollment;
-import kr.haedal.hoj.enrollment.EnrollmentRepository;
-import kr.haedal.hoj.enrollment.EnrollmentRole;
-import kr.haedal.hoj.user.RoleTitle;
-import kr.haedal.hoj.user.User;
+import kr.haedal.hoj.enrollment.entity.Enrollment;
+import kr.haedal.hoj.enrollment.repository.EnrollmentRepository;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.user.entity.RoleTitle;
+import kr.haedal.hoj.user.entity.User;
 import kr.haedal.hoj.user.dto.UserSummary;
 import org.springframework.stereotype.Component;
 

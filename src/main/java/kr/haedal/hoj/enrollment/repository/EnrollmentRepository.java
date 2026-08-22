@@ -1,4 +1,6 @@
-package kr.haedal.hoj.enrollment;
+package kr.haedal.hoj.enrollment.repository;
+
+import kr.haedal.hoj.enrollment.entity.Enrollment;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

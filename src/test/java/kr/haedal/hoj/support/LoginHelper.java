@@ -1,8 +1,8 @@
 package kr.haedal.hoj.support;
 
 import kr.haedal.hoj.auth.SessionConst;
-import kr.haedal.hoj.user.User;
-import kr.haedal.hoj.user.UserRepository;
+import kr.haedal.hoj.user.entity.User;
+import kr.haedal.hoj.user.repository.UserRepository;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.stereotype.Component;
 

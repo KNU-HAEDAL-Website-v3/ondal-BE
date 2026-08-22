@@ -1,4 +1,4 @@
-package kr.haedal.hoj.cohort;
+package kr.haedal.hoj.cohort.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

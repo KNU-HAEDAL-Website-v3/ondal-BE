@@ -1,9 +1,9 @@
 package kr.haedal.hoj.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import kr.haedal.hoj.enrollment.Enrollment;
-import kr.haedal.hoj.enrollment.EnrollmentRole;
-import kr.haedal.hoj.user.RoleTitle;
+import kr.haedal.hoj.enrollment.entity.Enrollment;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.user.entity.RoleTitle;
 import kr.haedal.hoj.user.dto.UserResponse;
 
 import java.time.Instant;

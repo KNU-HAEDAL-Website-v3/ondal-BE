@@ -1,4 +1,7 @@
-package kr.haedal.hoj.cohort;
+package kr.haedal.hoj.cohort.controller;
+
+import kr.haedal.hoj.cohort.entity.CohortStatus;
+import kr.haedal.hoj.cohort.service.CohortService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -9,8 +12,8 @@ import kr.haedal.hoj.auth.authorization.CohortRole;
 import kr.haedal.hoj.cohort.dto.CohortCreateRequest;
 import kr.haedal.hoj.cohort.dto.CohortResponse;
 import kr.haedal.hoj.cohort.dto.CohortUpdateRequest;
-import kr.haedal.hoj.enrollment.EnrollmentRole;
-import kr.haedal.hoj.user.User;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.user.entity.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

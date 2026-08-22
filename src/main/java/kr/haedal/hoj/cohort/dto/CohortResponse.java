@@ -1,10 +1,10 @@
 package kr.haedal.hoj.cohort.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import kr.haedal.hoj.cohort.Cohort;
-import kr.haedal.hoj.cohort.CohortStatus;
-import kr.haedal.hoj.enrollment.EnrollmentRole;
-import kr.haedal.hoj.user.RoleTitle;
+import kr.haedal.hoj.cohort.entity.Cohort;
+import kr.haedal.hoj.cohort.entity.CohortStatus;
+import kr.haedal.hoj.enrollment.entity.EnrollmentRole;
+import kr.haedal.hoj.user.entity.RoleTitle;
 import kr.haedal.hoj.user.dto.UserSummary;
 
 import java.time.Instant;

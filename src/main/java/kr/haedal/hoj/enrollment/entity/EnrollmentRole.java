@@ -1,4 +1,4 @@
-package kr.haedal.hoj.enrollment;
+package kr.haedal.hoj.enrollment.entity;
 
 /**
  * 분반 안에서의 역할 — "사람–분반 관계에" 붙는 속성. (docs: permissions.md §1)

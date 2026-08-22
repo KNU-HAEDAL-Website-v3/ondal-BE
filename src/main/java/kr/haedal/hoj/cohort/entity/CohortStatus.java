@@ -1,4 +1,4 @@
-package kr.haedal.hoj.cohort;
+package kr.haedal.hoj.cohort.entity;
 
 /**
  * 분반 상태. 하드 삭제는 없다 — 학기가 끝나면 ARCHIVED(보관)로 보낸다.

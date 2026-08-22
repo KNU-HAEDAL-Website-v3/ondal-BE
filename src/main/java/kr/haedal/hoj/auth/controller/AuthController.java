@@ -1,4 +1,8 @@
-package kr.haedal.hoj.auth;
+package kr.haedal.hoj.auth.controller;
+
+import kr.haedal.hoj.auth.service.AuthService;
+import kr.haedal.hoj.auth.SessionConst;
+import kr.haedal.hoj.auth.LoginUser;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -7,7 +11,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import kr.haedal.hoj.auth.authorization.LoginOnly;
 import kr.haedal.hoj.auth.dto.LoginRequest;
-import kr.haedal.hoj.user.User;
+import kr.haedal.hoj.user.entity.User;
 import kr.haedal.hoj.user.dto.UserResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

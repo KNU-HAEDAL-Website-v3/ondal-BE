@@ -61,6 +61,7 @@ local 프로필 샘플 데이터(시더): 계정 `admin`(ADMIN) / `operator1` / 
 
 - `main` 직접 push 금지 — 모든 변경은 PR로 (승인 1명 필수, 팀원 합류 후 적용)
 - API 계약(요청/응답)이 바뀌는 PR은 본문에 **[API 변경]** 을 명시하고 프론트에 공유
-- 새 API는 Cohort 수직 슬라이스 패턴(`cohort/`, `enrollment/` 패키지)을 그대로 복제해 작성 — 규약은 docs 레포 `docs/cohort/design.md` §4
+- 새 API는 Cohort 수직 슬라이스 패턴을 그대로 복제해 작성 — 규약은 docs 레포 `docs/cohort/design.md` §4
+- 도메인 패키지 안은 계층별 하위 패키지로 나눈다: `<도메인>/controller`, `service`, `repository`, `entity`, `dto` (예: `cohort/`, `enrollment/` 참고)
 - `/api/**` 의 모든 핸들러는 `@LoginOnly` / `@AdminOnly` / `@CohortRole` 중 하나를 단다. 빠지면 부팅이 실패한다 (`AuthorizationMappingValidator`)
 - 분반 스코프 리소스는 항상 `/api/cohorts/{cohortId}/...` 아래에 두고, 하위 id 는 서비스에서 `findByIdAndCohortId` 로 조회한다

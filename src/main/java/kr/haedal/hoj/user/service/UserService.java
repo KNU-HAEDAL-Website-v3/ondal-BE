@@ -1,4 +1,7 @@
-package kr.haedal.hoj.user;
+package kr.haedal.hoj.user.service;
+
+import kr.haedal.hoj.user.entity.User;
+import kr.haedal.hoj.user.repository.UserRepository;
 
 import kr.haedal.hoj.common.error.InvalidInputException;
 import org.springframework.stereotype.Service;

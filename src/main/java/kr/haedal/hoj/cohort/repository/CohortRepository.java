@@ -1,4 +1,7 @@
-package kr.haedal.hoj.cohort;
+package kr.haedal.hoj.cohort.repository;
+
+import kr.haedal.hoj.cohort.entity.Cohort;
+import kr.haedal.hoj.cohort.entity.CohortStatus;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
