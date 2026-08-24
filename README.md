@@ -1,8 +1,8 @@
-# haedal-online-judge-backend
+# ondal-BE
 
-HOJ(Haedal Online Judge) 백엔드 - Spring Boot 기반 API 서버.
+Ondal(온달) 백엔드 - Spring Boot 기반 API 서버.
 
-> 📚 **기획·설계 문서: [haedal-online-judge-docs](https://github.com/KNU-HAEDAL-Website-v3/haedal-online-judge-docs)에 집약. 프로젝트 첫 진입 시 docs 레포 선행 정독 권장.**
+> 📚 **기획·설계 문서: [ondal-docs](https://github.com/KNU-HAEDAL-Website-v3/ondal-docs)에 집약. 프로젝트 첫 진입 시 docs 레포 선행 정독 권장.**
 
 ## 실행법
 
@@ -22,10 +22,10 @@ docker compose up -d
 # 로그인 (admin은 local 프로필에서 자동 생성된 관리자. 다른 아무 loginId를 넣으면 MEMBER로 새로 생성됨)
 curl -i -X POST localhost:8080/api/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"loginId":"admin"}' -c /tmp/hoj-cookie.txt
+  -d '{"loginId":"admin"}' -c /tmp/ondal-cookie.txt
 
 # 내 정보 (세션 쿠키 사용)
-curl localhost:8080/api/auth/me -b /tmp/hoj-cookie.txt
+curl localhost:8080/api/auth/me -b /tmp/ondal-cookie.txt
 
 # 쿠키 없이 호출하면 401 {"code":"UNAUTHENTICATED", ...} 가 정상
 curl -i localhost:8080/api/auth/me
@@ -50,7 +50,7 @@ curl -i localhost:8080/api/auth/me
 | Build | Gradle |
 | DB | PostgreSQL 16 (로컬: Docker) |
 | API 명세 | springdoc-openapi 3.x → `/swagger-ui/index.html`, `/v3/api-docs` |
-| 테스트 | JUnit 5 + MockMvc + Testcontainers(PostgreSQL) - `src/test/java/kr/haedal/hoj/support/` 참고 |
+| 테스트 | JUnit 5 + MockMvc + Testcontainers(PostgreSQL) - `src/test/java/kr/haedal/ondal/support/` 참고 |
 
 ## 인증 (P1)
 
@@ -62,7 +62,7 @@ curl -i localhost:8080/api/auth/me
 
 - `main` 직접 push 금지 - 모든 변경은 PR로 (승인 1명 필수, 팀원 합류 후 적용)
 - API 계약(요청/응답) 변경 PR: 본문에 **[API 변경]** 명시 + 프론트에 공유
-- 새 API: Cohort 수직 슬라이스 패턴 그대로 복제해 작성 - 규약: docs 레포 `docs/cohort/design.md` 4절
+- 새 API: Cohort 수직 슬라이스 패턴 그대로 복제해 작성 - 규약: docs 레포 `docs/guide/design.md` 4절
 - 도메인 패키지 내부: 계층별 하위 패키지로 분리 - `<도메인>/controller`, `service`, `repository`, `entity`, `dto` (예: `cohort/`, `enrollment/` 참고)
 - `/api/**` 의 모든 핸들러: `@LoginOnly` / `@AdminOnly` / `@CohortRole` 중 하나 필수 - 누락 시 부팅 실패 (`AuthorizationMappingValidator`)
 - 분반 스코프 리소스: 항상 `/api/cohorts/{cohortId}/...` 하위에 배치, 하위 id 는 서비스에서 `findByIdAndCohortId` 로 조회

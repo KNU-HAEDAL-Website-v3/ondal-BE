@@ -32,6 +32,6 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: jdbc:postgresql://localhost:5432/hoj
-    username: hoj
-    password: hoj-local-password   # 로컬 도커 전용 값 - 진짜 비밀은 application-local.yml(.gitignore됨)에
+    url: jdbc:postgresql://localhost:5432/ondal
+    username: ondal
+    password: ondal-local-password   # 로컬 도커 전용 값 - 진짜 비밀은 application-local.yml(.gitignore됨)에
