@@ -1,11 +1,11 @@
-# CLAUDE.md - haedal-online-judge-backend
+# CLAUDE.md - ondal-BE
 
-> 전체 기획·설계 맥락: [docs 레포](https://github.com/KNU-HAEDAL-Website-v3/haedal-online-judge-docs)
+> 전체 기획·설계 맥락: [docs 레포](https://github.com/KNU-HAEDAL-Website-v3/ondal-docs)
 > 이 파일: 백엔드 작업 시 필요한 최소 맥락 요약본
 
 ## 이 레포는
 
-HOJ(부트캠프 과제 제출·관리 플랫폼 + 온라인 저지)의 API 서버. Spring Boot + Gradle + PostgreSQL.
+Ondal(부트캠프 과제 제출·관리 플랫폼 + 온라인 저지)의 API 서버. Spring Boot + Gradle + PostgreSQL.
 
 ## 핵심 설계 원칙
 
@@ -18,7 +18,7 @@ HOJ(부트캠프 과제 제출·관리 플랫폼 + 온라인 저지)의 API 서�
    - 상세: docs 레포 `docs/permissions.md`
 3. **분반 생성·운영진 지정: 전역 ADMIN 전용** - 최초 관리자는 DB 수동 지정(부트스트랩)
 4. **마감 판정: 서버 수신 시각 기준** - 저장은 UTC, 표시는 KST
-5. **인증 금지선: 홈페이지 비밀번호를 HOJ가 직접 받는 구조 금지**
+5. **인증 금지선: 홈페이지 비밀번호를 Ondal이 직접 받는 구조 금지**
    - 연동 대상: 홈페이지 로그인(구글 OAuth + 자체 로그인, 구축 중)
    - 연동 확정 전까지: 스텁 인증으로 개발
 

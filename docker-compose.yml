@@ -1,15 +1,15 @@
 services:
   db:
     image: postgres:16
-    container_name: hoj-db
+    container_name: ondal-db
     environment:
-      POSTGRES_DB: hoj
-      POSTGRES_USER: hoj
-      POSTGRES_PASSWORD: hoj-local-password
+      POSTGRES_DB: ondal
+      POSTGRES_USER: ondal
+      POSTGRES_PASSWORD: ondal-local-password
     ports:
       - "5432:5432"
     volumes:
-      - hoj-db-data:/var/lib/postgresql/data
+      - ondal-db-data:/var/lib/postgresql/data
 
 volumes:
-  hoj-db-data:
+  ondal-db-data:
