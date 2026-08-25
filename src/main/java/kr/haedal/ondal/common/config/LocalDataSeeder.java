@@ -1,5 +1,7 @@
 package kr.haedal.ondal.common.config;
 
+import kr.haedal.ondal.assignment.entity.Assignment;
+import kr.haedal.ondal.assignment.repository.AssignmentRepository;
 import kr.haedal.ondal.cohort.entity.Cohort;
 import kr.haedal.ondal.cohort.repository.CohortRepository;
 import kr.haedal.ondal.enrollment.entity.Enrollment;
@@ -14,6 +16,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -23,6 +27,7 @@ import java.util.List;
  *
  * 만드는 계정: admin(ADMIN) / operator1 / student1, student2, student3 (전부 스텁 로그인으로 바로 로그인 가능)
  * 만드는 분반: "2026-2 C언어"(ACTIVE: operator1 + student1~3), "2026-1 파이썬"(ARCHIVED: student1)
+ * 만드는 과제: 진행 중 분반에 3개 - 1차시(마감 지남) · 2차시(마감 전) · 차시 없음 (FE가 그룹핑·정렬·D-day까지 바로 확인)
  */
 @Component
 @Profile("local")
@@ -34,15 +39,18 @@ public class LocalDataSeeder implements CommandLineRunner {
     private final UserService userService;
     private final CohortRepository cohortRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final AssignmentRepository assignmentRepository;
 
     public LocalDataSeeder(UserRepository userRepository,
                            UserService userService,
                            CohortRepository cohortRepository,
-                           EnrollmentRepository enrollmentRepository) {
+                           EnrollmentRepository enrollmentRepository,
+                           AssignmentRepository assignmentRepository) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.cohortRepository = cohortRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.assignmentRepository = assignmentRepository;
     }
 
     @Override
@@ -66,7 +74,18 @@ public class LocalDataSeeder implements CommandLineRunner {
         cohortRepository.save(past);
         enroll(past, "student1", EnrollmentRole.STUDENT);
 
-        log.info("[seed] 샘플 분반 생성: '{}'(ACTIVE), '{}'(ARCHIVED). 계정: operator1, student1~3",
+        Instant now = Instant.now();
+        assignmentRepository.save(Assignment.create(current, 1, "1차시 - 입출력 연습",
+                "백준 1000번(A+B)을 풀고 코드를 제출하세요. https://www.acmicpc.net/problem/1000",
+                now.minus(3, ChronoUnit.DAYS)));
+        assignmentRepository.save(Assignment.create(current, 2, "2차시 - 조건문과 반복문",
+                "백준 2739번(구구단), 9498번(시험 성적)을 풀어 제출하세요.",
+                now.plus(7, ChronoUnit.DAYS)));
+        assignmentRepository.save(Assignment.create(current, null, "설문 - 스터디 시간 조사",
+                "차시와 무관한 공지형 과제입니다. 설문 링크를 확인하세요.",
+                now.plus(14, ChronoUnit.DAYS)));
+
+        log.info("[seed] 샘플 분반 생성: '{}'(ACTIVE, 과제 3개), '{}'(ARCHIVED). 계정: operator1, student1~3",
                 current.getName(), past.getName());
     }
 
