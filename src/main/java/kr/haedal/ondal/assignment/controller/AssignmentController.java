@@ -8,8 +8,10 @@ import jakarta.validation.Valid;
 import kr.haedal.ondal.assignment.dto.AssignmentCreateRequest;
 import kr.haedal.ondal.assignment.dto.AssignmentResponse;
 import kr.haedal.ondal.assignment.dto.AssignmentUpdateRequest;
+import kr.haedal.ondal.auth.LoginUser;
 import kr.haedal.ondal.auth.authorization.CohortRole;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
+import kr.haedal.ondal.user.entity.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,26 +42,27 @@ public class AssignmentController {
         this.assignmentService = assignmentService;
     }
 
-    @Operation(summary = "과제 목록 - 차시 오름차순(차시 없음 마지막), 같은 차시는 등록순")
+    @Operation(summary = "과제 목록 - 차시 오름차순(차시 없음 마지막), 같은 차시는 등록순. myStatus·submissionCount는 요청자 의존")
     @CohortRole(EnrollmentRole.STUDENT)
     @GetMapping
-    public List<AssignmentResponse> list(@PathVariable Long cohortId) {
-        return assignmentService.findAll(cohortId);
+    public List<AssignmentResponse> list(@PathVariable Long cohortId, @LoginUser User user) {
+        return assignmentService.findAll(cohortId, user);
     }
 
     @Operation(summary = "과제 상세")
     @CohortRole(EnrollmentRole.STUDENT)
     @GetMapping("/{assignmentId}")
-    public AssignmentResponse get(@PathVariable Long cohortId, @PathVariable Long assignmentId) {
-        return assignmentService.findOne(cohortId, assignmentId);
+    public AssignmentResponse get(@PathVariable Long cohortId, @PathVariable Long assignmentId, @LoginUser User user) {
+        return assignmentService.findOne(cohortId, assignmentId, user);
     }
 
     @Operation(summary = "[운영진] 과제 등록. 보관 분반이면 409")
     @CohortRole(EnrollmentRole.OPERATOR)
     @PostMapping
     public ResponseEntity<AssignmentResponse> create(@PathVariable Long cohortId,
-                                                     @RequestBody @Valid AssignmentCreateRequest request) {
-        AssignmentResponse created = assignmentService.create(cohortId, request);
+                                                     @RequestBody @Valid AssignmentCreateRequest request,
+                                                     @LoginUser User user) {
+        AssignmentResponse created = assignmentService.create(cohortId, request, user);
         // 계약은 본문의 id. Location은 REST 관례상 덧붙이는 것 (CORS exposedHeaders 없이는 브라우저에서 못 읽음)
         return ResponseEntity.created(URI.create("/api/cohorts/" + cohortId + "/assignments/" + created.id()))
                 .body(created);
@@ -70,11 +73,12 @@ public class AssignmentController {
     @PutMapping("/{assignmentId}")
     public AssignmentResponse update(@PathVariable Long cohortId,
                                      @PathVariable Long assignmentId,
-                                     @RequestBody @Valid AssignmentUpdateRequest request) {
-        return assignmentService.update(cohortId, assignmentId, request);
+                                     @RequestBody @Valid AssignmentUpdateRequest request,
+                                     @LoginUser User user) {
+        return assignmentService.update(cohortId, assignmentId, request, user);
     }
 
-    @Operation(summary = "[운영진] 과제 삭제. 보관 분반이면 409")
+    @Operation(summary = "[운영진] 과제 삭제 - 제출 이력·파일까지 연쇄 삭제. 보관 분반이면 409")
     @CohortRole(EnrollmentRole.OPERATOR)
     @DeleteMapping("/{assignmentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

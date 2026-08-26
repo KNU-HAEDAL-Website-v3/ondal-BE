@@ -7,6 +7,8 @@ import kr.haedal.ondal.cohort.repository.CohortRepository;
 import kr.haedal.ondal.enrollment.entity.Enrollment;
 import kr.haedal.ondal.enrollment.repository.EnrollmentRepository;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
+import kr.haedal.ondal.submission.entity.Submission;
+import kr.haedal.ondal.submission.repository.SubmissionRepository;
 import kr.haedal.ondal.user.entity.User;
 import kr.haedal.ondal.user.repository.UserRepository;
 import kr.haedal.ondal.user.service.UserService;
@@ -28,6 +30,8 @@ import java.util.List;
  * 만드는 계정: admin(ADMIN) / operator1 / student1, student2, student3 (전부 스텁 로그인으로 바로 로그인 가능)
  * 만드는 분반: "2026-2 C언어"(ACTIVE: operator1 + student1~3), "2026-1 파이썬"(ARCHIVED: student1)
  * 만드는 과제: 진행 중 분반에 3개 - 1차시(마감 지남) · 2차시(마감 전) · 차시 없음 (FE가 그룹핑·정렬·D-day까지 바로 확인)
+ * 만드는 제출: 1차시 과제에 상태 4종 재현 - student1 제출 / student2 제출(추가) / student3 지각, 2차시는 student1만 제출(나머지 미제출)
+ *   (zip 제출은 시딩하지 않는다 - 디스크 파일이 필요해 시더 부적합. 코드·링크 제출만)
  */
 @Component
 @Profile("local")
@@ -40,17 +44,20 @@ public class LocalDataSeeder implements CommandLineRunner {
     private final CohortRepository cohortRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AssignmentRepository assignmentRepository;
+    private final SubmissionRepository submissionRepository;
 
     public LocalDataSeeder(UserRepository userRepository,
                            UserService userService,
                            CohortRepository cohortRepository,
                            EnrollmentRepository enrollmentRepository,
-                           AssignmentRepository assignmentRepository) {
+                           AssignmentRepository assignmentRepository,
+                           SubmissionRepository submissionRepository) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.cohortRepository = cohortRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.assignmentRepository = assignmentRepository;
+        this.submissionRepository = submissionRepository;
     }
 
     @Override
@@ -75,18 +82,44 @@ public class LocalDataSeeder implements CommandLineRunner {
         enroll(past, "student1", EnrollmentRole.STUDENT);
 
         Instant now = Instant.now();
-        assignmentRepository.save(Assignment.create(current, 1, "1차시 - 입출력 연습",
+        Assignment session1 = assignmentRepository.save(Assignment.create(current, 1, "1차시 - 입출력 연습",
                 "백준 1000번(A+B)을 풀고 코드를 제출하세요. https://www.acmicpc.net/problem/1000",
                 now.minus(3, ChronoUnit.DAYS)));
-        assignmentRepository.save(Assignment.create(current, 2, "2차시 - 조건문과 반복문",
+        Assignment session2 = assignmentRepository.save(Assignment.create(current, 2, "2차시 - 조건문과 반복문",
                 "백준 2739번(구구단), 9498번(시험 성적)을 풀어 제출하세요.",
                 now.plus(7, ChronoUnit.DAYS)));
         assignmentRepository.save(Assignment.create(current, null, "설문 - 스터디 시간 조사",
                 "차시와 무관한 공지형 과제입니다. 설문 링크를 확인하세요.",
                 now.plus(14, ChronoUnit.DAYS)));
 
-        log.info("[seed] 샘플 분반 생성: '{}'(ACTIVE, 과제 3개), '{}'(ARCHIVED). 계정: operator1, student1~3",
+        seedSubmissions(session1, session2, now);
+
+        log.info("[seed] 샘플 분반 생성: '{}'(ACTIVE, 과제 3개 + 제출 시나리오 4종), '{}'(ARCHIVED). 계정: operator1, student1~3",
                 current.getName(), past.getName());
+    }
+
+    /** 1차시(마감 = now-3d) 기준 상태 4종 재현 - createAt으로 과거 제출 시각을 지정한다 (시더 전용 경로) */
+    private void seedSubmissions(Assignment session1, Assignment session2, Instant now) {
+        User student1 = userService.findOrCreateMember("student1");
+        User student2 = userService.findOrCreateMember("student2");
+        User student3 = userService.findOrCreateMember("student3");
+
+        String sampleCode = "#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    scanf(\"%d %d\", &a, &b);\n    printf(\"%d\\n\", a + b);\n    return 0;\n}\n";
+
+        // student1: 마감 내 1회 → 제출(SUBMITTED)
+        submissionRepository.save(Submission.createAt(session1, student1, sampleCode, "C", null,
+                now.minus(5, ChronoUnit.DAYS)));
+        // student2: 마감 내 + 마감 후 재제출 → 제출(추가)(SUBMITTED_EXTRA)
+        submissionRepository.save(Submission.createAt(session1, student2, sampleCode, "C", null,
+                now.minus(4, ChronoUnit.DAYS)));
+        submissionRepository.save(Submission.createAt(session1, student2, sampleCode + "// 리팩터링 재제출\n", "C",
+                "https://github.com/example/aplusb", now.minus(1, ChronoUnit.DAYS)));
+        // student3: 마감 후만 → 지각(LATE)
+        submissionRepository.save(Submission.createAt(session1, student3, null, null,
+                "https://github.com/example/late-submit", now.minus(1, ChronoUnit.DAYS)));
+        // 2차시(마감 전): student1만 제출 → 나머지는 미제출(NOT_SUBMITTED) 확인용
+        submissionRepository.save(Submission.createAt(session2, student1, sampleCode, "C", null,
+                now.minus(1, ChronoUnit.HOURS)));
     }
 
     private void enroll(Cohort cohort, String loginId, EnrollmentRole role) {
