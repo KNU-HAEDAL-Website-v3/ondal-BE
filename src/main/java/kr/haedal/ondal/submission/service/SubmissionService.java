@@ -196,12 +196,14 @@ public class SubmissionService {
     private StatusBoardRow toRow(Enrollment enrollment, Map<Long, List<SubmissionMoment>> momentsByUser, Instant dueAt) {
         List<SubmissionMoment> moments = momentsByUser.getOrDefault(enrollment.getUser().getId(), List.of());
         List<Instant> submittedAts = moments.stream().map(SubmissionMoment::submittedAt).toList();
-        Instant last = submittedAts.stream().max(Comparator.naturalOrder()).orElse(null);
+        // 최신 제출 = 대표 - 운영진은 이 id로 상세(#20)·파일(#21)에 진입한다
+        SubmissionMoment latest = moments.stream().max(Comparator.comparing(SubmissionMoment::submittedAt)).orElse(null);
         return new StatusBoardRow(
                 UserSummary.of(enrollment.getUser(), enrollment.getRole()),
                 SubmissionStatus.from(submittedAts, dueAt),
                 moments.size(),
-                last);
+                latest == null ? null : latest.submittedAt(),
+                latest == null ? null : latest.submissionId());
     }
 
     private Cohort requireCohort(Long cohortId) {

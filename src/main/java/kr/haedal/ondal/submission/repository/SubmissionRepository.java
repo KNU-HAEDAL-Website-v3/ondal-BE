@@ -25,13 +25,13 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     /** 현황판용 - 한 과제의 전체 제출 시각 (userId 기준 그룹핑은 서비스에서) */
     @Query("""
-            select new kr.haedal.ondal.submission.dto.SubmissionMoment(s.assignment.id, s.user.id, s.submittedAt)
+            select new kr.haedal.ondal.submission.dto.SubmissionMoment(s.id, s.assignment.id, s.user.id, s.submittedAt)
             from Submission s where s.assignment.id = :assignmentId""")
     List<SubmissionMoment> findMomentsByAssignmentId(@Param("assignmentId") Long assignmentId);
 
     /** 과제 목록의 myStatus 조립용 - 요청자의 제출 시각을 과제 여러 개에 대해 쿼리 1번으로 */
     @Query("""
-            select new kr.haedal.ondal.submission.dto.SubmissionMoment(s.assignment.id, s.user.id, s.submittedAt)
+            select new kr.haedal.ondal.submission.dto.SubmissionMoment(s.id, s.assignment.id, s.user.id, s.submittedAt)
             from Submission s where s.assignment.id in :assignmentIds and s.user.id = :userId""")
     List<SubmissionMoment> findMomentsByAssignmentIdInAndUserId(@Param("assignmentIds") Collection<Long> assignmentIds,
                                                                 @Param("userId") Long userId);
