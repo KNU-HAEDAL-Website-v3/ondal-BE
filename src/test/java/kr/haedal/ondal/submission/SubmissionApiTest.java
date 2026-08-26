@@ -501,7 +501,7 @@ class SubmissionApiTest extends ApiTestSupport {
             enrollStudent(id, "s2");
             long aid = createAssignment(id, FUTURE_DUE);
             submitCode(id, aid, login.member("s1"));
-            submitCode(id, aid, login.member("s1"));
+            long latest = submitCode(id, aid, login.member("s1"));
 
             mockMvc.perform(get("/api/cohorts/{id}/assignments/{aid}/status-board", id, aid)
                             .session(login.member("op1")))
@@ -511,10 +511,12 @@ class SubmissionApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$[0].status").value("SUBMITTED"))
                     .andExpect(jsonPath("$[0].submissionCount").value(2))
                     .andExpect(jsonPath("$[0].lastSubmittedAt").isNotEmpty())
+                    .andExpect(jsonPath("$[0].latestSubmissionId").value(latest))
                     .andExpect(jsonPath("$[1].user.name").value("s2"))
                     .andExpect(jsonPath("$[1].status").value("NOT_SUBMITTED"))
                     .andExpect(jsonPath("$[1].submissionCount").value(0))
-                    .andExpect(jsonPath("$[1].lastSubmittedAt", nullValue()));
+                    .andExpect(jsonPath("$[1].lastSubmittedAt", nullValue()))
+                    .andExpect(jsonPath("$[1].latestSubmissionId", nullValue()));
         }
 
         @Test

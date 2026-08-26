@@ -20,6 +20,9 @@ public record StatusBoardRow(
         int submissionCount,
 
         @Schema(description = "최근 제출 시각(UTC) - 제출 없으면 null")
-        Instant lastSubmittedAt
+        Instant lastSubmittedAt,
+
+        @Schema(description = "최신 제출 id - 제출물 상세(#20)·파일 다운로드(#21) 진입용. 제출 없으면 null (최신 제출 = 대표)")
+        Long latestSubmissionId
 ) {
 }
