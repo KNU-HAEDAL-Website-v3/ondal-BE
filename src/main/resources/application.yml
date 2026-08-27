@@ -13,8 +13,8 @@ spring:
     time-zone: UTC       # 응답의 시각은 UTC(ISO-8601) - KST 변환은 프론트 책임 (docs 결정)
   servlet:
     multipart:
-      max-file-size: 20MB     # 제출 zip 한도 - 서비스 검증과 이중 (docs/submission/design.md 결정 3)
-      max-request-size: 25MB  # 파일 + request JSON 파트 여유분
+      max-file-size: 10MB     # 제출 zip 한도 - 서비스 검증과 이중 (docs/submission/design.md 결정 14 - 20MB에서 축소)
+      max-request-size: 15MB  # 파일 + request JSON 파트 여유분
 
 ondal:
   upload:

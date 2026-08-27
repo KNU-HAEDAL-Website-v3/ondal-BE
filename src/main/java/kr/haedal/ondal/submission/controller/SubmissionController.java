@@ -46,7 +46,7 @@ public class SubmissionController {
         this.submissionService = submissionService;
     }
 
-    @Operation(summary = "제출 - multipart(request JSON 파트 + file zip 파트 선택). 본문(코드/파일 택1)·링크 최소 1개. 마감 후에도 허용(지각 표시). 보관 분반이면 409")
+    @Operation(summary = "제출 - 3종 택1(type: CODE 코드·언어 필수 / FILE zip 10MB / LINK 링크 1~5개). multipart(request JSON 파트 + file zip 파트). 마감 후에도 허용(지각 표시). 보관 분반이면 409")
     @CohortRole(EnrollmentRole.STUDENT)
     @PostMapping(value = "/submissions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SubmissionResponse> create(@PathVariable Long cohortId,

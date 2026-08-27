@@ -13,11 +13,18 @@ import java.util.Optional;
 
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
-    /** 내 제출 이력 - 최신이 대표(맨 앞). idx_submissions_assignment_user가 이 조회를 지원 */
-    List<Submission> findAllByAssignmentIdAndUserIdOrderBySubmittedAtDesc(Long assignmentId, Long userId);
+    /** 내 제출 이력 - 최신이 대표(맨 앞). idx_submissions_assignment_user가 이 조회를 지원. 응답에 링크가 실리므로 links를 fetch join(행별 N+1 방지) */
+    @Query("""
+            select s from Submission s left join fetch s.links
+            where s.assignment.id = :assignmentId and s.user.id = :userId
+            order by s.submittedAt desc""")
+    List<Submission> findAllByAssignmentIdAndUserIdOrderBySubmittedAtDesc(@Param("assignmentId") Long assignmentId,
+                                                                          @Param("userId") Long userId);
 
-    /** 손자 리소스 스코프 조회 - 경로의 assignmentId와 함께 조회, 불일치·부재는 404. 응답에 제출자가 실리므로 user를 fetch join */
-    @Query("select s from Submission s join fetch s.user where s.id = :id and s.assignment.id = :assignmentId")
+    /** 손자 리소스 스코프 조회 - 경로의 assignmentId와 함께 조회, 불일치·부재는 404. 응답에 제출자·링크가 실리므로 fetch join */
+    @Query("""
+            select s from Submission s join fetch s.user left join fetch s.links
+            where s.id = :id and s.assignment.id = :assignmentId""")
     Optional<Submission> findByIdAndAssignmentIdWithUser(@Param("id") Long id, @Param("assignmentId") Long assignmentId);
 
     /** 과제 삭제 연쇄용 - storedPath를 알아야 디스크 파일을 먼저 지울 수 있다 */

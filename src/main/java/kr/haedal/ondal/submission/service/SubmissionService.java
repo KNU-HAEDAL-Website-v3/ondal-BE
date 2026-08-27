@@ -17,6 +17,7 @@ import kr.haedal.ondal.submission.dto.SubmissionResponse;
 import kr.haedal.ondal.submission.dto.SubmissionSummary;
 import kr.haedal.ondal.submission.entity.Submission;
 import kr.haedal.ondal.submission.entity.SubmissionStatus;
+import kr.haedal.ondal.submission.entity.SubmissionType;
 import kr.haedal.ondal.submission.repository.SubmissionRepository;
 import kr.haedal.ondal.user.dto.UserSummary;
 import kr.haedal.ondal.user.entity.User;
@@ -41,7 +42,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class SubmissionService {
 
-    static final long MAX_FILE_SIZE = 20L * 1024 * 1024; // 20MB - Spring multipart 한도와 이중 (MockMvc는 서블릿 한도를 안 태우므로 서비스 검증이 실효 방어)
+    static final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB (결정 14) - Spring multipart 한도와 이중 (MockMvc는 서블릿 한도를 안 태우므로 서비스 검증이 실효 방어)
+    static final int MAX_LINKS = 5;
 
     private final SubmissionRepository submissionRepository;
     private final AssignmentRepository assignmentRepository;
@@ -67,20 +69,24 @@ public class SubmissionService {
         requireCohort(cohortId).ensureActive();
         Assignment assignment = requireAssignment(cohortId, assignmentId);
 
+        SubmissionType type = request.type();
         String codeText = normalize(request.codeText());
         String language = normalize(request.language());
-        String linkUrl = normalize(request.linkUrl());
+        List<String> linkUrls = request.linkUrls() == null
+                ? List.of()
+                : request.linkUrls().stream().map(url -> url == null ? "" : url.trim()).toList();
         boolean hasFile = file != null && !file.isEmpty();
-        validate(codeText, language, linkUrl, hasFile, file);
+        validate(type, codeText, language, linkUrls, hasFile, file);
 
         // 순서: 검증 → 디스크 저장 → DB insert. DB가 실패하면 방금 저장한 파일을 지워 고아 파일을 막는다
-        String storedPath = hasFile ? fileStorage.store(file) : null;
+        String storedPath = type == SubmissionType.FILE ? fileStorage.store(file) : null;
         Submission submission;
         try {
             submission = submissionRepository.save(Submission.create(
-                    assignment, submitter, codeText, language,
-                    hasFile ? file.getOriginalFilename() : null, storedPath,
-                    hasFile ? file.getSize() : null, linkUrl));
+                    assignment, submitter, type, codeText, language,
+                    storedPath != null ? file.getOriginalFilename() : null, storedPath,
+                    storedPath != null ? file.getSize() : null,
+                    type == SubmissionType.LINK ? linkUrls : List.of()));
         } catch (RuntimeException e) {
             if (storedPath != null) {
                 fileStorage.delete(storedPath);
@@ -134,6 +140,7 @@ public class SubmissionService {
 
     /**
      * 과제 삭제 연쇄의 제출 구간 - 디스크 파일을 먼저 지워야 "파일 → 행" 순서가 성립한다 (schema.md 4절).
+     * submission_links는 cascade(REMOVE)로 제출과 함께 지워진다 - 링크가 행보다 먼저 삭제되는 순서도 JPA가 보장.
      * deleteAllInBatch(벌크 쿼리) 금지 - 영속성 컨텍스트를 우회해서, 조회해 둔 Submission이 삭제된
      * Assignment를 참조하는 채로 남아 커밋 시 TransientPropertyValueException이 난다.
      */
@@ -147,23 +154,49 @@ public class SubmissionService {
 
     // ---- 내부 ----------------------------------------------------------------------------
 
-    private void validate(String codeText, String language, String linkUrl, boolean hasFile, MultipartFile file) {
-        if (codeText != null && hasFile) {
-            throw new InvalidInputException("본문은 코드와 파일 중 하나만 담을 수 있습니다.");
-        }
-        if (codeText == null && !hasFile && linkUrl == null) {
-            throw new InvalidInputException("코드, 파일, 링크 중 최소 1개는 있어야 합니다.");
-        }
-        if (language != null && codeText == null) {
-            throw new InvalidInputException("제출 언어는 코드 제출에만 지정할 수 있습니다.");
-        }
-        if (hasFile) {
-            String originalName = file.getOriginalFilename();
-            if (originalName == null || !originalName.toLowerCase().endsWith(".zip")) {
-                throw new InvalidInputException("zip 파일만 업로드할 수 있습니다.");
+    /** type별 필수·금지 조합 - 위반은 전부 400 (docs/submission/api.md 3절) */
+    private void validate(SubmissionType type, String codeText, String language, List<String> linkUrls,
+                          boolean hasFile, MultipartFile file) {
+        switch (type) {
+            case CODE -> {
+                if (codeText == null) {
+                    throw new InvalidInputException("코드 제출에는 코드가 있어야 합니다.");
+                }
+                if (language == null) {
+                    throw new InvalidInputException("코드 제출에는 제출 언어가 있어야 합니다.");
+                }
+                if (hasFile || !linkUrls.isEmpty()) {
+                    throw new InvalidInputException("코드 제출에는 파일·링크를 담을 수 없습니다.");
+                }
             }
-            if (file.getSize() > MAX_FILE_SIZE) {
-                throw new InvalidInputException("파일은 20MB 이하여야 합니다.");
+            case FILE -> {
+                if (!hasFile) {
+                    throw new InvalidInputException("파일 제출에는 zip 파일이 있어야 합니다.");
+                }
+                if (codeText != null || language != null || !linkUrls.isEmpty()) {
+                    throw new InvalidInputException("파일 제출에는 코드·언어·링크를 담을 수 없습니다.");
+                }
+                String originalName = file.getOriginalFilename();
+                if (originalName == null || !originalName.toLowerCase().endsWith(".zip")) {
+                    throw new InvalidInputException("zip 파일만 업로드할 수 있습니다.");
+                }
+                if (file.getSize() > MAX_FILE_SIZE) {
+                    throw new InvalidInputException("파일은 10MB 이하여야 합니다.");
+                }
+            }
+            case LINK -> {
+                if (codeText != null || language != null || hasFile) {
+                    throw new InvalidInputException("링크 제출에는 코드·언어·파일을 담을 수 없습니다.");
+                }
+                if (linkUrls.isEmpty()) {
+                    throw new InvalidInputException("링크 제출에는 링크가 1개 이상 있어야 합니다.");
+                }
+                if (linkUrls.size() > MAX_LINKS) {
+                    throw new InvalidInputException("링크는 최대 5개까지입니다.");
+                }
+                if (linkUrls.stream().anyMatch(String::isEmpty)) {
+                    throw new InvalidInputException("빈 링크는 담을 수 없습니다.");
+                }
             }
         }
     }
