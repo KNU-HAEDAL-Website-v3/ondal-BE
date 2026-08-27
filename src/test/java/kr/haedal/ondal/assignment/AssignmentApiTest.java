@@ -52,6 +52,129 @@ class AssignmentApiTest extends ApiTestSupport {
     }
 
     @Nested
+    @DisplayName("문제 번호 - 전역 유일, 1000부터 (schema.md 결정 9)")
+    class ProblemNo {
+
+        @Test
+        void 비우면_1000부터_자동_채번() throws Exception {
+            long id = createCohort("C언어", "op1");
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(assignmentBody(1, "첫 과제"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.problemNo").value(1000));
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(assignmentBody(2, "둘째 과제"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.problemNo").value(1001));
+        }
+
+        @Test
+        void 수동_지정하면_그_번호_이후_자동은_최대_더하기_1() throws Exception {
+            long id = createCohort("C언어", "op1");
+            Map<String, Object> manual = assignmentBody(1, "수동 번호 과제");
+            manual.put("problemNo", 2000);
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(manual)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.problemNo").value(2000));
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(assignmentBody(2, "자동 번호 과제"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.problemNo").value(2001));
+        }
+
+        @Test
+        void 중복_지정은_다른_분반이어도_409() throws Exception {
+            long a = createCohort("A반", "op1");
+            long b = createCohort("B반", "op2");
+            Map<String, Object> manual = assignmentBody(1, "선점 과제");
+            manual.put("problemNo", 2000);
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", a)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(manual)))
+                    .andExpect(status().isCreated());
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", a)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(manual)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("CONFLICT"));
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", b)
+                            .session(login.member("op2"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(manual)))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        void 천_미만_지정은_400() throws Exception {
+            long id = createCohort("C언어", "op1");
+            Map<String, Object> manual = assignmentBody(1, "번호 오류 과제");
+            manual.put("problemNo", 999);
+            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(manual)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void 수정에서_비우면_기존_번호_유지_지정하면_변경() throws Exception {
+            long id = createCohort("C언어", "op1");
+            long assignmentId = createAssignment(id, 1, "과제");
+
+            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, assignmentId)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(assignmentBody(1, "번호 없이 수정"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.problemNo").value(1000));
+
+            Map<String, Object> renumber = assignmentBody(1, "번호 바꿔 수정");
+            renumber.put("problemNo", 3000);
+            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, assignmentId)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(renumber)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.problemNo").value(3000));
+
+            // 자기 번호를 다시 보내는 것은 중복이 아니다
+            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, assignmentId)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(renumber)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.problemNo").value(3000));
+        }
+
+        @Test
+        void 수정으로_타_과제_번호_사용은_409() throws Exception {
+            long id = createCohort("C언어", "op1");
+            createAssignment(id, 1, "선점 과제"); // 1000
+            long second = createAssignment(id, 2, "충돌 과제"); // 1001
+
+            Map<String, Object> clash = assignmentBody(2, "충돌 시도");
+            clash.put("problemNo", 1000);
+            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, second)
+                            .session(login.member("op1"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(clash)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("CONFLICT"));
+        }
+    }
+
+    @Nested
     @DisplayName("인증과 권한 - 역할 x 엔드포인트")
     class Authorization {
 

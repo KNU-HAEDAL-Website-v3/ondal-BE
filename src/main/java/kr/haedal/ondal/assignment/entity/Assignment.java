@@ -10,12 +10,13 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import kr.haedal.ondal.cohort.entity.Cohort;
 
 import java.time.Instant;
 
 /**
- * 과제 - 분반에 속하며 차시 번호(선택)로 묶인다.
+ * 과제 = 문제 - 전역 유일 번호(problemNo)를 갖고, 분반에 속하며 차시 번호(선택)로 묶인다.
  * 조회는 항상 (id, cohort_id) 스코프 - 다른 분반의 과제는 존재를 드러내지 않는다(404).
  * 제출 상태(미제출/제출/제출(추가)/지각)는 Submission 이력과 dueAt으로 계산한다 - 이 엔티티에 상태 열 없음.
  *
@@ -23,7 +24,8 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "assignments",
-        indexes = @Index(name = "idx_assignments_cohort", columnList = "cohort_id"))
+        indexes = @Index(name = "idx_assignments_cohort", columnList = "cohort_id"),
+        uniqueConstraints = @UniqueConstraint(name = "uk_assignments_problem_no", columnNames = "problem_no"))
 public class Assignment {
 
     @Id
@@ -33,6 +35,10 @@ public class Assignment {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cohort_id", nullable = false)
     private Cohort cohort;
+
+    /** 문제 번호 - 전역 유일, 1000부터 (schema.md 결정 9). 채번·중복 검사는 서비스, unique 제약은 동시성 최후 방어 */
+    @Column(name = "problem_no", nullable = false)
+    private Integer problemNo;
 
     /** 차시 번호(선택) - 운영진 자유 입력, 중복·건너뜀 허용. 차시 밖 과제는 null */
     @Column(name = "session_no")
@@ -54,8 +60,9 @@ public class Assignment {
         // JPA 스펙이 요구하는 기본 생성자
     }
 
-    private Assignment(Cohort cohort, Integer sessionNo, String title, String description, Instant dueAt) {
+    private Assignment(Cohort cohort, Integer problemNo, Integer sessionNo, String title, String description, Instant dueAt) {
         this.cohort = cohort;
+        this.problemNo = problemNo;
         this.sessionNo = sessionNo;
         this.title = title;
         this.description = description;
@@ -63,12 +70,13 @@ public class Assignment {
         this.createdAt = Instant.now();
     }
 
-    public static Assignment create(Cohort cohort, Integer sessionNo, String title, String description, Instant dueAt) {
-        return new Assignment(cohort, sessionNo, title, description, dueAt);
+    public static Assignment create(Cohort cohort, Integer problemNo, Integer sessionNo, String title, String description, Instant dueAt) {
+        return new Assignment(cohort, problemNo, sessionNo, title, description, dueAt);
     }
 
     /** PUT 전체 교체. 마감(dueAt)이 바뀌면 지각 판정도 새 마감 기준으로 다시 계산된다 (제출 슬라이스) */
-    public void update(Integer sessionNo, String title, String description, Instant dueAt) {
+    public void update(Integer problemNo, Integer sessionNo, String title, String description, Instant dueAt) {
+        this.problemNo = problemNo;
         this.sessionNo = sessionNo;
         this.title = title;
         this.description = description;
@@ -77,6 +85,7 @@ public class Assignment {
 
     public Long getId() { return id; }
     public Cohort getCohort() { return cohort; }
+    public Integer getProblemNo() { return problemNo; }
     public Integer getSessionNo() { return sessionNo; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }

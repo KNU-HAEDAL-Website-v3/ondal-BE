@@ -1,6 +1,7 @@
 package kr.haedal.ondal.assignment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -8,8 +9,12 @@ import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 
-/** 과제 수정 요청 (PUT 전체 교체) - 필드·검증은 등록 요청과 동일 */
+/** 과제 수정 요청 (PUT 전체 교체) - 필드·검증은 등록 요청과 동일. 예외: problemNo는 비우면 기존 번호 유지 */
 public record AssignmentUpdateRequest(
+        @Schema(description = "문제 번호 (선택) - 비우면 기존 번호 유지(전체 교체 규칙의 예외). 변경 시 전역 유일, 중복이면 409", example = "1003")
+        @Min(value = 1000, message = "문제 번호는 1000 이상이어야 합니다.")
+        Integer problemNo,
+
         @Schema(description = "차시 번호 (선택) - 자유 입력, 중복·건너뜀 허용. 차시에서 빼려면 생략", example = "2")
         @Positive(message = "차시 번호는 1 이상이어야 합니다.")
         Integer sessionNo,

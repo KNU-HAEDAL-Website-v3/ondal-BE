@@ -8,6 +8,7 @@ import kr.haedal.ondal.assignment.dto.AssignmentResponse;
 import kr.haedal.ondal.assignment.dto.AssignmentUpdateRequest;
 import kr.haedal.ondal.cohort.entity.Cohort;
 import kr.haedal.ondal.cohort.repository.CohortRepository;
+import kr.haedal.ondal.common.error.ConflictException;
 import kr.haedal.ondal.common.error.NotFoundException;
 import kr.haedal.ondal.submission.service.SubmissionService;
 import kr.haedal.ondal.user.entity.User;
@@ -58,15 +59,17 @@ public class AssignmentService {
     public AssignmentResponse create(Long cohortId, AssignmentCreateRequest request, User viewer) {
         Cohort cohort = requireCohort(cohortId);
         cohort.ensureActive();
+        Integer problemNo = resolveProblemNoForCreate(request.problemNo());
         Assignment assignment = assignmentRepository.save(Assignment.create(
-                cohort, request.sessionNo(), request.title(), request.description(), request.dueAt()));
+                cohort, problemNo, request.sessionNo(), request.title(), request.description(), request.dueAt()));
         return assembler.toResponse(assignment, cohortId, viewer);
     }
 
     public AssignmentResponse update(Long cohortId, Long assignmentId, AssignmentUpdateRequest request, User viewer) {
         requireCohort(cohortId).ensureActive();
         Assignment assignment = requireAssignment(cohortId, assignmentId);
-        assignment.update(request.sessionNo(), request.title(), request.description(), request.dueAt());
+        Integer problemNo = resolveProblemNoForUpdate(request.problemNo(), assignment);
+        assignment.update(problemNo, request.sessionNo(), request.title(), request.description(), request.dueAt());
         return assembler.toResponse(assignment, cohortId, viewer);
     }
 
@@ -76,6 +79,28 @@ public class AssignmentService {
         Assignment assignment = requireAssignment(cohortId, assignmentId);
         submissionService.deleteAllOf(assignment.getId());
         assignmentRepository.delete(assignment);
+    }
+
+    /** 등록: 비우면 자동 채번(최대+1, 1000 시작), 지정하면 중복 검사 (schema.md 결정 9). 동시 충돌은 unique 제약이 최후 방어 */
+    private Integer resolveProblemNoForCreate(Integer requested) {
+        if (requested == null) {
+            return assignmentRepository.findMaxProblemNo().map(max -> max + 1).orElse(1000);
+        }
+        if (assignmentRepository.existsByProblemNo(requested)) {
+            throw new ConflictException("이미 사용 중인 문제 번호입니다: " + requested);
+        }
+        return requested;
+    }
+
+    /** 수정: 비우면 기존 번호 유지 - 번호가 이미 있는 리소스라 "비움 = 새로 받기"가 아니다 (전체 교체 규칙의 명세 예외) */
+    private Integer resolveProblemNoForUpdate(Integer requested, Assignment assignment) {
+        if (requested == null) {
+            return assignment.getProblemNo();
+        }
+        if (assignmentRepository.existsByProblemNoAndIdNot(requested, assignment.getId())) {
+            throw new ConflictException("이미 사용 중인 문제 번호입니다: " + requested);
+        }
+        return requested;
     }
 
     private Cohort requireCohort(Long cohortId) {
