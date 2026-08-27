@@ -73,9 +73,18 @@ class SubmissionApiTest extends ApiTestSupport {
 
     private Map<String, Object> codeBody() {
         Map<String, Object> body = new HashMap<>();
+        body.put("type", "CODE");
         body.put("codeText", "print('hello')");
         body.put("language", "Python 3");
         return body;
+    }
+
+    private Map<String, Object> fileBody() {
+        return Map.of("type", "FILE");
+    }
+
+    private Map<String, Object> linkBody(List<String> linkUrls) {
+        return Map.of("type", "LINK", "linkUrls", linkUrls);
     }
 
     /** 코드 제출 후 submission id를 돌려준다 */
@@ -241,7 +250,7 @@ class SubmissionApiTest extends ApiTestSupport {
     }
 
     @Nested
-    @DisplayName("제출 형식 검증 - 본문(코드/파일 택1) + 링크, 최소 1개")
+    @DisplayName("제출 형식 검증 - 3종 택1(type), 형태별 필수·금지")
     class Validation {
 
         private long cohortId;
@@ -255,7 +264,42 @@ class SubmissionApiTest extends ApiTestSupport {
         }
 
         @Test
-        void 코드와_파일_동시는_400() throws Exception {
+        void type이_없거나_모르는_값이면_400() throws Exception {
+            MockHttpSession s1 = student();
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(Map.of()))
+                            .session(s1))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(Map.of("type", "PIZZA")))
+                            .session(s1))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        }
+
+        @Test
+        void 코드_제출은_코드와_언어가_필수() throws Exception {
+            MockHttpSession s1 = student();
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(codeBody()))
+                            .session(s1))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.type").value("CODE"))
+                    .andExpect(jsonPath("$.links", hasSize(0)));
+            // 코드가 공백뿐이면 없는 것 - 400
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(Map.of("type", "CODE", "codeText", " ", "language", "C")))
+                            .session(s1))
+                    .andExpect(status().isBadRequest());
+            // 언어 누락 - 400 (2026-08-26 개정: 코드 제출 언어 필수)
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(Map.of("type", "CODE", "codeText", "int main(){}")))
+                            .session(s1))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void 코드_제출에_파일이나_링크를_실으면_400() throws Exception {
             MockHttpSession s1 = student();
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
                             .file(requestPart(codeBody()))
@@ -263,77 +307,109 @@ class SubmissionApiTest extends ApiTestSupport {
                             .session(s1))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-        }
-
-        @Test
-        void 본문도_링크도_없으면_400() throws Exception {
-            MockHttpSession s1 = student();
+            Map<String, Object> withLinks = new HashMap<>(codeBody());
+            withLinks.put("linkUrls", List.of("https://github.com/s1/hw"));
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of()))
-                            .session(s1))
-                    .andExpect(status().isBadRequest());
-            // 빈 문자열은 없는 것으로 취급한다
-            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("codeText", " ", "linkUrl", "")))
+                            .file(requestPart(withLinks))
                             .session(s1))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
-        void 코드만_파일만_링크만_코드와링크_전부_성공() throws Exception {
+        void 파일_제출은_zip이_필수_코드나_언어_금지() throws Exception {
             MockHttpSession s1 = student();
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("codeText", "int main(){}")))
-                            .session(s1))
-                    .andExpect(status().isCreated());
-            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of()))
+                            .file(requestPart(fileBody()))
                             .file(zipFile("solution.zip", new byte[]{1, 2}))
                             .session(s1))
                     .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.type").value("FILE"))
                     .andExpect(jsonPath("$.fileName").value("solution.zip"))
                     .andExpect(jsonPath("$.fileSize").value(2));
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("linkUrl", "https://github.com/s1/hw")))
+                            .file(requestPart(fileBody()))
                             .session(s1))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isBadRequest());
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("codeText", "int main(){}", "linkUrl", "https://github.com/s1/hw")))
+                            .file(requestPart(Map.of("type", "FILE", "language", "C")))
+                            .file(zipFile("solution.zip", new byte[]{1}))
                             .session(s1))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
         void zip_외_확장자는_400() throws Exception {
             MockHttpSession s1 = student();
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of()))
+                            .file(requestPart(fileBody()))
                             .file(zipFile("virus.exe", new byte[]{1}))
                             .session(s1))
                     .andExpect(status().isBadRequest());
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of()))
+                            .file(requestPart(fileBody()))
                             .file(zipFile("readme.txt", new byte[]{1}))
                             .session(s1))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
-        void 이십MB_초과_파일은_400() throws Exception {
+        void 십MB_초과_파일은_400() throws Exception {
             MockHttpSession s1 = student();
-            byte[] tooBig = new byte[20 * 1024 * 1024 + 1];
+            byte[] tooBig = new byte[10 * 1024 * 1024 + 1];
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of()))
+                            .file(requestPart(fileBody()))
                             .file(zipFile("big.zip", tooBig))
                             .session(s1))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
-        void 파일_제출에_언어를_실으면_400() throws Exception {
+        void 링크_제출은_입력_순서를_보존한다() throws Exception {
             MockHttpSession s1 = student();
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("language", "C")))
+                            .file(requestPart(linkBody(List.of(
+                                    "https://github.com/s1/hw", "https://hw.example.dev", "https://blog.example.com/retro"))))
+                            .session(s1))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.type").value("LINK"))
+                    .andExpect(jsonPath("$.links", hasSize(3)))
+                    .andExpect(jsonPath("$.links[0]").value("https://github.com/s1/hw"))
+                    .andExpect(jsonPath("$.links[2]").value("https://blog.example.com/retro"));
+        }
+
+        @Test
+        void 링크_개수는_1개_이상_5개_이하_빈_링크_금지() throws Exception {
+            MockHttpSession s1 = student();
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(linkBody(List.of())))
+                            .session(s1))
+                    .andExpect(status().isBadRequest());
+            List<String> six = List.of("https://a/1", "https://a/2", "https://a/3", "https://a/4", "https://a/5", "https://a/6");
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(linkBody(six)))
+                            .session(s1))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(linkBody(List.of("https://a/1", " "))))
+                            .session(s1))
+                    .andExpect(status().isBadRequest());
+            // 5개는 성공
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(linkBody(List.of("https://a/1", "https://a/2", "https://a/3", "https://a/4", "https://a/5"))))
+                            .session(s1))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.links", hasSize(5)));
+        }
+
+        @Test
+        void 링크_제출에_코드나_파일을_실으면_400() throws Exception {
+            MockHttpSession s1 = student();
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(Map.of("type", "LINK", "linkUrls", List.of("https://a/1"), "codeText", "int main(){}")))
+                            .session(s1))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
+                            .file(requestPart(linkBody(List.of("https://a/1"))))
                             .file(zipFile("solution.zip", new byte[]{1}))
                             .session(s1))
                     .andExpect(status().isBadRequest());
@@ -343,15 +419,15 @@ class SubmissionApiTest extends ApiTestSupport {
         void 길이_제한_초과는_400() throws Exception {
             MockHttpSession s1 = student();
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("codeText", "a".repeat(100_001))))
+                            .file(requestPart(Map.of("type", "CODE", "codeText", "a".repeat(100_001), "language", "C")))
                             .session(s1))
                     .andExpect(status().isBadRequest());
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("codeText", "code", "language", "가".repeat(31))))
+                            .file(requestPart(Map.of("type", "CODE", "codeText", "code", "language", "가".repeat(31))))
                             .session(s1))
                     .andExpect(status().isBadRequest());
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", cohortId, assignmentId)
-                            .file(requestPart(Map.of("linkUrl", "https://" + "a".repeat(2048))))
+                            .file(requestPart(linkBody(List.of("https://" + "a".repeat(2048)))))
                             .session(s1))
                     .andExpect(status().isBadRequest());
         }
@@ -486,6 +562,7 @@ class SubmissionApiTest extends ApiTestSupport {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(3)))
                     .andExpect(jsonPath("$[0].id").value(last))
+                    .andExpect(jsonPath("$[0].type").value("CODE"))
                     .andExpect(jsonPath("$[0].codeText").doesNotExist());
         }
     }
@@ -563,7 +640,7 @@ class SubmissionApiTest extends ApiTestSupport {
             byte[] content = "PK-테스트-압축-내용".getBytes(StandardCharsets.UTF_8);
 
             MvcResult created = mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", id, aid)
-                            .file(requestPart(Map.of()))
+                            .file(requestPart(fileBody()))
                             .file(zipFile("과제제출.zip", content))
                             .session(login.member("s1")))
                     .andExpect(status().isCreated())
@@ -641,8 +718,13 @@ class SubmissionApiTest extends ApiTestSupport {
             long aid = createAssignment(id, FUTURE_DUE);
             submitCode(id, aid, login.member("s1"));
             mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", id, aid)
-                            .file(requestPart(Map.of()))
+                            .file(requestPart(fileBody()))
                             .file(zipFile("solution.zip", new byte[]{1, 2, 3}))
+                            .session(login.member("s1")))
+                    .andExpect(status().isCreated());
+            // 링크 제출도 섞는다 - submission_links가 cascade로 함께 지워지는지 확인
+            mockMvc.perform(multipart("/api/cohorts/{id}/assignments/{aid}/submissions", id, aid)
+                            .file(requestPart(linkBody(List.of("https://github.com/s1/hw", "https://hw.example.dev"))))
                             .session(login.member("s1")))
                     .andExpect(status().isCreated());
 
