@@ -13,6 +13,9 @@ import java.time.Instant;
 public record AssignmentResponse(
         Long id,
 
+        @Schema(description = "문제 번호 - 전역 유일, 1000부터. 표시 형식(#1000)은 FE 몫")
+        Integer problemNo,
+
         @Schema(description = "차시 번호 - 차시에 속하지 않는 과제는 null. 목록은 차시 오름차순(null 마지막) → 등록순")
         Integer sessionNo,
 
@@ -35,6 +38,7 @@ public record AssignmentResponse(
     public static AssignmentResponse of(Assignment assignment, SubmissionStatus myStatus, Integer submissionCount) {
         return new AssignmentResponse(
                 assignment.getId(),
+                assignment.getProblemNo(),
                 assignment.getSessionNo(),
                 assignment.getTitle(),
                 assignment.getDescription(),

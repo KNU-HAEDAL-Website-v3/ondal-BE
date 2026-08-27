@@ -84,13 +84,13 @@ public class LocalDataSeeder implements CommandLineRunner {
         enroll(past, "student1", EnrollmentRole.STUDENT);
 
         Instant now = Instant.now();
-        Assignment session1 = assignmentRepository.save(Assignment.create(current, 1, "1차시 - 입출력 연습",
+        Assignment session1 = assignmentRepository.save(Assignment.create(current, 1000, 1, "1차시 - 입출력 연습",
                 "두 정수 A와 B를 한 줄에 공백으로 구분해 입력받아 A+B를 출력하는 프로그램을 작성해 제출하세요.",
                 now.minus(3, ChronoUnit.DAYS)));
-        Assignment session2 = assignmentRepository.save(Assignment.create(current, 2, "2차시 - 조건문과 반복문",
+        Assignment session2 = assignmentRepository.save(Assignment.create(current, 1001, 2, "2차시 - 조건문과 반복문",
                 "정수 N을 입력받아 N단 구구단을 출력하는 문제와, 점수를 입력받아 등급(A~F)을 출력하는 문제를 풀어 제출하세요.",
                 now.plus(7, ChronoUnit.DAYS)));
-        assignmentRepository.save(Assignment.create(current, null, "설문 - 스터디 시간 조사",
+        assignmentRepository.save(Assignment.create(current, 1002, null, "설문 - 스터디 시간 조사",
                 "차시와 무관한 공지형 과제입니다. 설문 링크를 확인하세요.",
                 now.plus(14, ChronoUnit.DAYS)));
 
