@@ -23,6 +23,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	// API 문서(OpenAPI/Swagger UI). Boot BOM 관리 대상이 아니라 버전을 직접 적는다 - 3.x = Boot 4.x 라인.
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
+	// 홈페이지 로그인(Keycloak OIDC)의 ID 토큰 검증(JWKS 서명·iss·aud·exp)에만 쓴다 - Spring Security 필터체인은 도입하지 않는다(docs 결정 5·7). 버전은 Boot BOM 관리
+	implementation 'org.springframework.security:spring-security-oauth2-jose'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	// 스키마 마이그레이션 - 기동 시 db/migration 의 V{n}__*.sql 적용. Flyway 10+ 는 DB별 모듈이 따로 필요하다. 버전은 Boot BOM 관리
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
@@ -35,6 +37,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// OIDC 테스트의 가짜 IdP(support/FakeOidcProvider)가 ID 토큰을 서명할 때 직접 쓴다 - oauth2-jose 가 끌어오는 것과 같은 라이브러리, 버전은 Boot BOM 관리
+	testImplementation 'com.nimbusds:nimbus-jose-jwt'
 }
 
 tasks.named('test') {

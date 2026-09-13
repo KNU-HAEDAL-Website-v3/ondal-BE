@@ -13,6 +13,7 @@ public class UserService {
 
     /** users.login_id, users.name 컬럼 길이 (User 엔티티의 @Column(length = 50)) */
     public static final int MAX_LOGIN_ID_LENGTH = 50;
+    public static final int MAX_NAME_LENGTH = 50;
 
     private final UserRepository userRepository;
 
@@ -32,5 +33,22 @@ public class UserService {
         }
         return userRepository.findByLoginId(loginId)
                 .orElseGet(() -> userRepository.save(User.member(loginId, loginId)));
+    }
+
+    /**
+     * 홈페이지 로그인(OIDC) 성공 시 - loginId(= 홈페이지 username)로 찾거나 만들고, 홈페이지가 알려준 이름으로 맞춘다.
+     * 신원의 원본은 홈페이지(User 주석): 이름은 매 로그인마다 덮어쓰고, globalRole 은 Ondal 것이라 건드리지 않는다 (부트스트랩 ADMIN 유지).
+     * 이름 클레임이 없으면 loginId 로 채운다(스텁·배정과 같은 규칙). 50자를 넘는 이름은 잘라 저장 - DB 제약 위반 500 방지.
+     */
+    public User syncFromIdentity(String loginId, String nameOrNull) {
+        User user = findOrCreateMember(loginId);
+        String name = (nameOrNull == null || nameOrNull.isBlank()) ? loginId : nameOrNull.strip();
+        if (name.length() > MAX_NAME_LENGTH) {
+            name = name.substring(0, MAX_NAME_LENGTH);
+        }
+        if (!name.equals(user.getName())) {
+            user.rename(name);
+        }
+        return user;
     }
 }
