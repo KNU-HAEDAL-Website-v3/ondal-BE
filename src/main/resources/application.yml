@@ -24,6 +24,10 @@ spring:
 ondal:
   upload:
     dir: ./uploads       # 제출 파일 저장 루트 - submissions/{UUID}.zip 키가 이 아래에 놓인다. S3 전환 시 FileStorage만 교체
+  auth:
+    # stub: loginId 만 보내면 통과 (local·test) / oidc: 홈페이지 Keycloak 로그인 (prod - 아래 prod 절에서 지정)
+    # prod 프로필에서 stub 이면 StubAuthService 가 기동을 막는다 - 설정 실수로 스텁이 운영에 올라가는 사고 방지
+    mode: stub
 
 server:
   servlet:
@@ -68,6 +72,18 @@ ondal:
   cors:
     # FE 커스텀 도메인이 기본값. pages.dev 미리보기 오리진은 세션 쿠키(lax)가 실리지 않아 로그인 불가 - 필요 시 .env에서 쉼표로 추가(공백 금지)
     allowed-origins: ${CORS_ORIGINS:https://ondal.haedal-sos-man-in-the-mirror.com}
+  auth:
+    mode: oidc   # 홈페이지 로그인(Keycloak) - OIDC 인가 코드 + PKCE, BE 가 코드 교환 (docs 결정 7). auth/oidc 패키지
+    oidc:
+      # OIDC_ISSUER 는 기본값 없음 - 비어 있으면 기동 실패(placeholder 미해결). 예: https://auth.haedal-sos-man-in-the-mirror.com/realms/haedal
+      # BE 는 이 공개 주소로 Keycloak 에 접근한다 (Discovery·토큰 교환·JWKS - Cloudflare 경유). ID 토큰의 iss 와 정확히 같아야 한다
+      issuer: ${OIDC_ISSUER}
+      client-id: ${OIDC_CLIENT_ID:ondal-be}
+      client-secret: ${OIDC_CLIENT_SECRET}      # Keycloak 클라이언트(confidential)의 secret - .env 에서 주입
+      # Keycloak 클라이언트의 Valid redirect URIs 에 등록된 값과 문자 단위로 같아야 한다
+      redirect-uri: ${OIDC_REDIRECT_URI:https://ondal-api.haedal-sos-man-in-the-mirror.com/api/auth/callback}
+      # 로그인 성공 후 돌아갈 FE. 로그인 실패는 {frontend-url}/login?error=코드 로 보낸다
+      frontend-url: ${FE_URL:https://ondal.haedal-sos-man-in-the-mirror.com}
 
 server:
   # nginx(0-haedal-infra)가 보내는 X-Forwarded-Proto=https 를 신뢰 - springdoc servers URL·리다이렉트가 https 로 나간다

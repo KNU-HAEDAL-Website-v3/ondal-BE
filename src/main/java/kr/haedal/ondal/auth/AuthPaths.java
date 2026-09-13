@@ -8,8 +8,9 @@ package kr.haedal.ondal.auth;
 public final class AuthPaths {
 
     public static final String[] PUBLIC = {
-            "/api/auth/login",   // 로그인 전이니 당연히 면제
-            "/api/auth/logout",  // 만료된 세션으로 눌러도 조용히 성공해야 함
+            "/api/auth/login",    // 로그인 전이니 당연히 면제 (stub: POST, oidc: GET - 모드별 컨트롤러 한 쪽만 뜬다)
+            "/api/auth/callback", // oidc: 홈페이지(Keycloak)가 브라우저를 돌려보내는 주소 - 아직 세션이 없다
+            "/api/auth/logout",   // 만료된 세션으로 눌러도 조용히 성공해야 함
             "/api/health"        // 모니터링용
     };
 

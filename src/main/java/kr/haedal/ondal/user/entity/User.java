@@ -62,6 +62,11 @@ public class User {
         return globalRole == GlobalRole.ADMIN;
     }
 
+    /** 홈페이지(신원의 원본)가 알려준 최신 이름으로 맞춘다 - 로그인 동기화(UserService.syncFromIdentity) 전용 */
+    public void rename(String name) {
+        this.name = name;
+    }
+
     public Long getId() { return id; }
     public String getLoginId() { return loginId; }
     public String getName() { return name; }
