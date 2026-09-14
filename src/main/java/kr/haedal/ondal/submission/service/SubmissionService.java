@@ -6,6 +6,8 @@ import kr.haedal.ondal.cohort.entity.Cohort;
 import kr.haedal.ondal.cohort.repository.CohortRepository;
 import kr.haedal.ondal.common.error.InvalidInputException;
 import kr.haedal.ondal.common.error.NotFoundException;
+import kr.haedal.ondal.submission.dto.SubmissionComment;
+import kr.haedal.ondal.submission.dto.SubmissionCommentRequest;
 import kr.haedal.ondal.enrollment.entity.Enrollment;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
 import kr.haedal.ondal.enrollment.repository.EnrollmentRepository;
@@ -93,7 +95,7 @@ public class SubmissionService {
             }
             throw e;
         }
-        return SubmissionResponse.of(submission, assignment.getDueAt(), summaryOf(cohortId, submitter));
+        return toResponse(cohortId, submission, assignment.getDueAt());
     }
 
     /** #19 내 제출 이력 - 최신순. 코드 전문은 싣지 않는다 */
@@ -110,7 +112,33 @@ public class SubmissionService {
     public SubmissionResponse findOne(Long cohortId, Long assignmentId, Long submissionId, User viewer) {
         Assignment assignment = requireAssignment(cohortId, assignmentId);
         Submission submission = requireViewable(cohortId, assignmentId, submissionId, viewer);
-        return SubmissionResponse.of(submission, assignment.getDueAt(), summaryOf(cohortId, submission.getUser()));
+        return toResponse(cohortId, submission, assignment.getDueAt());
+    }
+
+    /** #45 코멘트 남기기·덮어쓰기 - 운영진 이상(어노테이션). 제출 1건에 1개. 보관 분반이면 409 (docs submission/design.md 결정 18) */
+    public SubmissionResponse comment(Long cohortId, Long assignmentId, Long submissionId,
+                                      SubmissionCommentRequest request, User operator) {
+        requireCohort(cohortId).ensureActive();
+        Assignment assignment = requireAssignment(cohortId, assignmentId);
+        Submission submission = requireViewable(cohortId, assignmentId, submissionId, operator);
+        submission.comment(request.content().strip(), operator);
+        return toResponse(cohortId, submission, assignment.getDueAt());
+    }
+
+    /** #46 코멘트 지우기 - 운영진 이상. 없어도 조용히 204(멱등) */
+    public void clearComment(Long cohortId, Long assignmentId, Long submissionId, User operator) {
+        requireCohort(cohortId).ensureActive();
+        requireAssignment(cohortId, assignmentId);
+        Submission submission = requireViewable(cohortId, assignmentId, submissionId, operator);
+        submission.clearComment();
+    }
+
+    /** 응답 조립 - 제출자 직책 + 코멘트(있으면 작성 운영진 직책까지). 호출자의 트랜잭션 안에서 LAZY 종결 */
+    private SubmissionResponse toResponse(Long cohortId, Submission submission, Instant dueAt) {
+        SubmissionComment comment = submission.hasComment()
+                ? new SubmissionComment(submission.getMentorComment(), summaryOf(cohortId, submission.getCommentedBy()), submission.getCommentedAt())
+                : null;
+        return SubmissionResponse.of(submission, dueAt, summaryOf(cohortId, submission.getUser()), comment);
     }
 
     /** #21 파일 다운로드 - 권한은 #20과 동일. 파일 없는 제출(코드·링크)은 404 */
@@ -236,7 +264,8 @@ public class SubmissionService {
                 SubmissionStatus.from(submittedAts, dueAt),
                 moments.size(),
                 latest == null ? null : latest.submittedAt(),
-                latest == null ? null : latest.submissionId());
+                latest == null ? null : latest.submissionId(),
+                latest != null && latest.commented());
     }
 
     private Cohort requireCohort(Long cohortId) {

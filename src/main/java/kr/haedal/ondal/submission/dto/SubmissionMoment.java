@@ -6,5 +6,7 @@ import java.time.Instant;
  * 상태 계산용 최소 조회(프로젝션) - 제출 시각만 필요할 때 codeText(TEXT) 전문을 끌어오지 않기 위한 것.
  * 과제 응답 조립(assignmentId 기준 그룹핑)과 현황판(userId 기준 그룹핑, 최신 제출 id)이 공용한다.
  */
-public record SubmissionMoment(Long submissionId, Long assignmentId, Long userId, Instant submittedAt) {
+public record SubmissionMoment(Long submissionId, Long assignmentId, Long userId, Instant submittedAt,
+                               /** 운영진 코멘트가 달렸는가 - 현황판의 latestCommented 용 */
+                               boolean commented) {
 }

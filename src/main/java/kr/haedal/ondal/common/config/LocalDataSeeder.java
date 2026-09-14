@@ -138,9 +138,11 @@ public class LocalDataSeeder implements CommandLineRunner {
 
         String sampleCode = "#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    scanf(\"%d %d\", &a, &b);\n    printf(\"%d\\n\", a + b);\n    return 0;\n}\n";
 
-        // student1: 마감 내 1회(CODE) → 제출(SUBMITTED)
-        submissionRepository.save(Submission.createAt(session1, student1, SubmissionType.CODE, sampleCode, "C",
+        // student1: 마감 내 1회(CODE) → 제출(SUBMITTED). 운영진 코멘트 1건 - FE 가 코멘트 표시·수정 폼을 바로 확인 (FE mock 동일)
+        Submission first = submissionRepository.save(Submission.createAt(session1, student1, SubmissionType.CODE, sampleCode, "C",
                 null, now.minus(5, ChronoUnit.DAYS)));
+        first.comment("입력 처리가 깔끔합니다. 변수명(a, b)만 조금 더 의미 있게 지어 보세요.", userService.findOrCreateMember("operator1"));
+        submissionRepository.save(first);
         // student2: 마감 내(CODE) + 마감 후 재제출(LINK 다중) → 제출(추가)(SUBMITTED_EXTRA)
         submissionRepository.save(Submission.createAt(session1, student2, SubmissionType.CODE, sampleCode, "C",
                 null, now.minus(4, ChronoUnit.DAYS)));

@@ -23,6 +23,9 @@ public record StatusBoardRow(
         Instant lastSubmittedAt,
 
         @Schema(description = "최신 제출 id - 제출물 상세(#20)·파일 다운로드(#21) 진입용. 제출 없으면 null (최신 제출 = 대표)")
-        Long latestSubmissionId
+        Long latestSubmissionId,
+
+        @Schema(description = "최신 제출에 운영진 코멘트가 달렸는가 - 운영진이 아직 검토하지 않은 제출을 한눈에. 제출 없으면 false")
+        boolean latestCommented
 ) {
 }

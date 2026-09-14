@@ -30,9 +30,11 @@ public record SubmissionResponse(
         Instant submittedAt,
 
         @Schema(description = "지각 여부 - 서버 판정값(submittedAt > dueAt). 프론트 재계산 금지. 마감이 수정되면 재조회 시 값이 바뀔 수 있다")
-        boolean late
+        boolean late,
+        @Schema(description = "운영진 코멘트 - 없으면 null (2026-09-14 도입, 점수 없음)")
+        SubmissionComment comment
 ) {
-    public static SubmissionResponse of(Submission submission, Instant dueAt, UserSummary user) {
+    public static SubmissionResponse of(Submission submission, Instant dueAt, UserSummary user, SubmissionComment comment) {
         return new SubmissionResponse(
                 submission.getId(),
                 user,
@@ -43,7 +45,8 @@ public record SubmissionResponse(
                 submission.getFileSize(),
                 submission.getLinkUrls(),
                 submission.getSubmittedAt(),
-                submission.getSubmittedAt().isAfter(dueAt)
+                submission.getSubmittedAt().isAfter(dueAt),
+                comment
         );
     }
 }

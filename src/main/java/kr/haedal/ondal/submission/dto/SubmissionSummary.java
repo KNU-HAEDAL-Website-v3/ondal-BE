@@ -24,7 +24,9 @@ public record SubmissionSummary(
         Instant submittedAt,
 
         @Schema(description = "지각 여부 - 서버 판정값. 프론트 재계산 금지")
-        boolean late
+        boolean late,
+        @Schema(description = "운영진 코멘트가 달렸는가 - 목록 행의 '코멘트' 표시용. 내용은 단건(#20)에서")
+        boolean hasComment
 ) {
     public static SubmissionSummary of(Submission submission, Instant dueAt) {
         return new SubmissionSummary(
@@ -35,7 +37,8 @@ public record SubmissionSummary(
                 submission.getFileSize(),
                 submission.getLinkUrls(),
                 submission.getSubmittedAt(),
-                submission.getSubmittedAt().isAfter(dueAt)
+                submission.getSubmittedAt().isAfter(dueAt),
+                submission.hasComment()
         );
     }
 }
