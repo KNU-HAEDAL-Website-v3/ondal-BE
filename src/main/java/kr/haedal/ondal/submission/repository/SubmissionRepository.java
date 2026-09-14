@@ -3,6 +3,7 @@ package kr.haedal.ondal.submission.repository;
 import kr.haedal.ondal.submission.dto.AssignmentSubmissionCount;
 import kr.haedal.ondal.submission.dto.SubmissionMoment;
 import kr.haedal.ondal.submission.entity.Submission;
+import kr.haedal.ondal.submission.entity.SubmissionType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,6 +30,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     /** 과제 삭제 연쇄용 - storedPath를 알아야 디스크 파일을 먼저 지울 수 있다 */
     List<Submission> findAllByAssignmentId(Long assignmentId);
+
+    /** 재채점 대상·건수 - 이 과제의 CODE 제출 (judge 슬라이스) */
+    List<Submission> findAllByAssignmentIdAndType(Long assignmentId, SubmissionType type);
+
+    long countByAssignmentIdAndType(Long assignmentId, SubmissionType type);
 
     /** 현황판용 - 한 과제의 전체 제출 시각 (userId 기준 그룹핑은 서비스에서) */
     @Query("""

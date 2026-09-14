@@ -20,6 +20,13 @@ import kr.haedal.ondal.qna.repository.AnswerRepository;
 import kr.haedal.ondal.qna.repository.QuestionRepository;
 import kr.haedal.ondal.submission.entity.Submission;
 import kr.haedal.ondal.submission.entity.SubmissionType;
+import kr.haedal.ondal.judge.dto.JudgeCaseResult;
+import kr.haedal.ondal.judge.entity.JudgeResult;
+import kr.haedal.ondal.judge.entity.TestCase;
+import kr.haedal.ondal.judge.entity.Verdict;
+import kr.haedal.ondal.judge.repository.JudgeResultRepository;
+import kr.haedal.ondal.judge.repository.TestCaseRepository;
+import kr.haedal.ondal.judge.service.JudgeAggregator;
 import kr.haedal.ondal.submission.repository.SubmissionRepository;
 import kr.haedal.ondal.user.entity.User;
 import kr.haedal.ondal.user.repository.UserRepository;
@@ -32,6 +39,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -64,6 +72,9 @@ public class LocalDataSeeder implements CommandLineRunner {
     private final SessionRepository sessionRepository;
     private final AttendanceRepository attendanceRepository;
     private final AnswerRepository answerRepository;
+    private final TestCaseRepository testCaseRepository;
+    private final JudgeResultRepository judgeResultRepository;
+    private final JudgeAggregator judgeAggregator;
 
     public LocalDataSeeder(UserRepository userRepository,
                            UserService userService,
@@ -75,7 +86,10 @@ public class LocalDataSeeder implements CommandLineRunner {
                            NoticeRepository noticeRepository,
                            SessionRepository sessionRepository,
                            AttendanceRepository attendanceRepository,
-                           AnswerRepository answerRepository) {
+                           AnswerRepository answerRepository,
+                           TestCaseRepository testCaseRepository,
+                           JudgeResultRepository judgeResultRepository,
+                           JudgeAggregator judgeAggregator) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.cohortRepository = cohortRepository;
@@ -87,6 +101,9 @@ public class LocalDataSeeder implements CommandLineRunner {
         this.sessionRepository = sessionRepository;
         this.attendanceRepository = attendanceRepository;
         this.answerRepository = answerRepository;
+        this.testCaseRepository = testCaseRepository;
+        this.judgeResultRepository = judgeResultRepository;
+        this.judgeAggregator = judgeAggregator;
     }
 
     @Override
@@ -122,6 +139,7 @@ public class LocalDataSeeder implements CommandLineRunner {
                 now.plus(14, ChronoUnit.DAYS)));
 
         seedSubmissions(session1, session2, now);
+        seedJudge(session1);
         seedQuestions(current);
         seedNotices(current);
         seedAttendance(current);
@@ -155,6 +173,30 @@ public class LocalDataSeeder implements CommandLineRunner {
         // 2차시(마감 전): student1만 제출 → 나머지는 미제출(NOT_SUBMITTED) 확인용
         submissionRepository.save(Submission.createAt(session2, student1, SubmissionType.CODE, sampleCode, "C",
                 null, now.minus(1, ChronoUnit.HOURS)));
+    }
+
+    /**
+     * 자동 채점 샘플 - 1차시(A+B)에 테스트케이스 3개(첫 번째 공개) + 코드 제출의 결과를 엔진 호출 없이 직접 저장:
+     * 가장 먼저 낸 제출(student1) ACCEPTED 3/3, 나머지 코드 제출 WRONG_ANSWER 2/3. FE 가 판정 배지·결과 상세·현황판 판정 열을 바로 확인 (FE mock 동일)
+     */
+    private void seedJudge(Assignment session1) {
+        testCaseRepository.save(TestCase.create(session1, 0, "1 2\n", "3\n", true));
+        testCaseRepository.save(TestCase.create(session1, 1, "10 20\n", "30\n", false));
+        testCaseRepository.save(TestCase.create(session1, 2, "-5 5\n", "0\n", false));
+        List<Submission> codes = submissionRepository.findAllByAssignmentIdAndType(session1.getId(), SubmissionType.CODE).stream()
+                .sorted(Comparator.comparing(Submission::getId))
+                .toList();
+        for (int i = 0; i < codes.size(); i++) {
+            boolean accepted = i == 0;
+            List<JudgeCaseResult> cases = List.of(
+                    new JudgeCaseResult(0, Verdict.ACCEPTED, 2, 1536, "3\n", false),
+                    new JudgeCaseResult(1, Verdict.ACCEPTED, 2, 1536, "30\n", false),
+                    new JudgeCaseResult(2, accepted ? Verdict.ACCEPTED : Verdict.WRONG_ANSWER, 3, 1600, accepted ? "0\n" : "10\n", false));
+            JudgeResult result = JudgeResult.pending(codes.get(i).getId(), session1.getId());
+            result.markRunning();
+            result.complete(accepted ? Verdict.ACCEPTED : Verdict.WRONG_ANSWER, accepted ? 3 : 2, 3, 3, 1600, null, judgeAggregator.toJson(cases));
+            judgeResultRepository.save(result);
+        }
     }
 
     /** Q&A 게시판 샘플 - 수강생 질문 2건. 답변(댓글)은 이 슬라이스 범위 밖이라 시딩하지 않는다 */

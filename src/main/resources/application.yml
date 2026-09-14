@@ -24,6 +24,31 @@ spring:
 ondal:
   upload:
     dir: ./uploads       # 제출 파일 저장 루트 - submissions/{UUID}.zip 키가 이 아래에 놓인다. S3 전환 시 FileStorage만 교체
+  judge:
+    # 채점 엔진 (docs judge/design.md 결정 6) - fake: 지시 주석·echo, 실행 없음 (local·test 기본, prod 기동 거부) / judge0: Judge0 HTTP (url·token 필수) / off: 엔진 없음 - 출제·저장은 되고 제출은 채점 대기(PENDING)
+    engine: fake
+    async: true                 # false 면 호출 스레드에서 바로 채점 - 테스트(ApiTestSupport)가 제출 직후 결과를 단언한다
+    default-time-limit-ms: 2000 # 출제 폼 기본값. 과제별 값이 없을 때
+    default-memory-limit-mb: 256
+    max-time-limit-ms: 15000    # 폼 상한 = Judge0 MAX_CPU_TIME_LIMIT (infra/judge0/judge0.conf.example)
+    max-memory-limit-mb: 512    # = MAX_MEMORY_LIMIT 524288KB
+    max-test-cases: 50
+    max-run-inputs: 20          # #49 출제 도구 1회 입력 수
+    # FE 언어 셀렉트 문자열 → Judge0 1.13.1 language_id. 키에 공백·기호가 있어 [] 로 감싼다. 여기 없는 언어는 자동 채점 문제에 제출 불가(400)
+    languages:
+      "[C]": 50
+      "[C++]": 54
+      "[Java]": 62
+      "[Python 3]": 71
+      "[JavaScript]": 63
+      "[TypeScript]": 74
+    judge0:
+      url: http://localhost:2358   # prod 는 .env JUDGE0_URL (VM 안 Judge0 - docs judge/infra.md 4절)
+      token: ""                    # prod 는 .env JUDGE0_TOKEN = judge0.conf 의 AUTHN_TOKEN
+      batch-size: 20               # Judge0 MAX_SUBMISSION_BATCH_SIZE 이하
+      poll-interval-ms: 1000
+      poll-timeout-ms: 60000
+      max-attempts: 8              # 일시 장애 재시도 - 2s,4s,...256s 백오프 뒤 JUDGE_ERROR
   auth:
     # stub: loginId 만 보내면 통과 (local·test) / oidc: 홈페이지 Keycloak 로그인 (prod - 아래 prod 절에서 지정)
     # prod 프로필에서 stub 이면 StubAuthService 가 기동을 막는다 - 설정 실수로 스텁이 운영에 올라가는 사고 방지
@@ -69,6 +94,12 @@ spring:
         format_sql: false
 
 ondal:
+  judge:
+    # 엔진 연결 전 기본값 off - 출제·저장은 되고 채점은 대기. Judge0(VM) 준비 후 .env 에 ONDAL_JUDGE_ENGINE=judge0, JUDGE0_URL, JUDGE0_TOKEN
+    engine: ${ONDAL_JUDGE_ENGINE:off}
+    judge0:
+      url: ${JUDGE0_URL:}
+      token: ${JUDGE0_TOKEN:}
   cors:
     # FE 커스텀 도메인이 기본값. pages.dev 미리보기 오리진은 세션 쿠키(lax)가 실리지 않아 로그인 불가 - 필요 시 .env에서 쉼표로 추가(공백 금지)
     allowed-origins: ${CORS_ORIGINS:https://ondal.haedal-sos-man-in-the-mirror.com}

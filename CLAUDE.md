@@ -42,4 +42,4 @@ Ondal(부트캠프 과제 제출·관리 플랫폼 + 온라인 저지)의 API �
 
 - 포함: 로그인(홈페이지 Keycloak OIDC, 개발은 스텁) · 분반 CRUD+운영진 지정 · 수강생 배정 · 과제 CRUD · 제출 · 마감 판정 · 미제출자 대시보드
 - P1 제외(백로그): 출석부 / 수강신청 흐름 / 알림(2026-09-14 제외 확정) / Q&A 질문 글은 2026-09-09 P1 편입, 답변은 2026-09-14 P2 편입 - docs 결정 6·qna/design.md 결정 11, `qna` 슬라이스
-- P2 진행: 공지사항(`notice` 슬라이스, 2026-09-14 - 전체 공지는 관리자, 분반 공지는 운영진 이상. docs notice/design.md) · 출석부(`attendance` 슬라이스, 2026-09-14 - 차시 Session + 출석 기록, 표시는 운영진, 출석률은 서버 계산. docs attendance/design.md) · 예정: 자동채점(Judge0)
+- P2 진행: 공지사항(`notice` 슬라이스, 2026-09-14 - 전체 공지는 관리자, 분반 공지는 운영진 이상. docs notice/design.md) · 출석부(`attendance` 슬라이스, 2026-09-14 - 차시 Session + 출석 기록, 표시는 운영진, 출석률은 서버 계산. docs attendance/design.md) · 자동채점(`judge` 슬라이스, 2026-09-14 - 과제의 테스트케이스 + 제출의 채점 결과 1행, 판정은 서버 비교기, 실행만 엔진. 엔진 모드 `ondal.judge.engine` = fake(local·test) | judge0(prod, url·token) | off(prod 기본 - 채점 대기). docs judge/design.md)

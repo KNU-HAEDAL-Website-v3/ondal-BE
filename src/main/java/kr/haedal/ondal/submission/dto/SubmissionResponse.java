@@ -1,6 +1,7 @@
 package kr.haedal.ondal.submission.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import kr.haedal.ondal.judge.dto.JudgeResultResponse;
 import kr.haedal.ondal.submission.entity.Submission;
 import kr.haedal.ondal.submission.entity.SubmissionType;
 import kr.haedal.ondal.user.dto.UserSummary;
@@ -32,9 +33,11 @@ public record SubmissionResponse(
         @Schema(description = "지각 여부 - 서버 판정값(submittedAt > dueAt). 프론트 재계산 금지. 마감이 수정되면 재조회 시 값이 바뀔 수 있다")
         boolean late,
         @Schema(description = "운영진 코멘트 - 없으면 null (2026-09-14 도입, 점수 없음)")
-        SubmissionComment comment
+        SubmissionComment comment,
+        @Schema(description = "자동 채점 결과 - CODE 제출이고 자동 채점 문제일 때만, 아니면 null. 제출 직후는 status PENDING (judge/api.md 2절)")
+        JudgeResultResponse judge
 ) {
-    public static SubmissionResponse of(Submission submission, Instant dueAt, UserSummary user, SubmissionComment comment) {
+    public static SubmissionResponse of(Submission submission, Instant dueAt, UserSummary user, SubmissionComment comment, JudgeResultResponse judge) {
         return new SubmissionResponse(
                 submission.getId(),
                 user,
@@ -46,7 +49,8 @@ public record SubmissionResponse(
                 submission.getLinkUrls(),
                 submission.getSubmittedAt(),
                 submission.getSubmittedAt().isAfter(dueAt),
-                comment
+                comment,
+                judge
         );
     }
 }

@@ -41,7 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Import(PostgresContainerConfig.class)
 // 제출 파일은 build/ 아래로 - 모든 테스트 클래스가 같은 값이어야 스프링 컨텍스트 캐시가 유지된다 (@TempDir는 클래스마다 달라져 부적합)
-@TestPropertySource(properties = "ondal.upload.dir=build/test-uploads")
+// 채점 워커는 동기(호출 스레드) - 제출 직후 결과를 단언한다. 엔진은 test 기본 fake
+@TestPropertySource(properties = {"ondal.upload.dir=build/test-uploads", "ondal.judge.async=false"})
 public abstract class ApiTestSupport {
 
     @Autowired protected MockMvc mockMvc;

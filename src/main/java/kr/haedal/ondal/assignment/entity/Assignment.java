@@ -56,6 +56,13 @@ public class Assignment {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** 자동 채점 제한(선택) - null 이면 서버 기본값(ondal.judge.default-*). 테스트케이스와 함께 #48 로만 바뀐다 (judge/design.md 결정 1·8) */
+    @Column(name = "time_limit_ms")
+    private Integer timeLimitMs;
+
+    @Column(name = "memory_limit_mb")
+    private Integer memoryLimitMb;
+
     protected Assignment() {
         // JPA 스펙이 요구하는 기본 생성자
     }
@@ -83,6 +90,12 @@ public class Assignment {
         this.dueAt = dueAt;
     }
 
+    /** 채점 설정 저장(#48) - null 은 "기본값 사용" */
+    public void updateJudgeLimits(Integer timeLimitMs, Integer memoryLimitMb) {
+        this.timeLimitMs = timeLimitMs;
+        this.memoryLimitMb = memoryLimitMb;
+    }
+
     public Long getId() { return id; }
     public Cohort getCohort() { return cohort; }
     public Integer getProblemNo() { return problemNo; }
@@ -91,4 +104,6 @@ public class Assignment {
     public String getDescription() { return description; }
     public Instant getDueAt() { return dueAt; }
     public Instant getCreatedAt() { return createdAt; }
+    public Integer getTimeLimitMs() { return timeLimitMs; }
+    public Integer getMemoryLimitMb() { return memoryLimitMb; }
 }
