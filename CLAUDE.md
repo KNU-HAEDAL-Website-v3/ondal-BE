@@ -42,4 +42,4 @@ Ondal(부트캠프 과제 제출·관리 플랫폼 + 온라인 저지)의 API �
 
 - 포함: 로그인(홈페이지 Keycloak OIDC, 개발은 스텁) · 분반 CRUD+운영진 지정 · 수강생 배정 · 과제 CRUD · 제출 · 마감 판정 · 미제출자 대시보드
 - P1 제외(백로그): 출석부 / 수강신청 흐름 / Q&A 답변·알림 (질문 글 CRUD는 2026-09-09 P1 편입 - docs 결정 6, `qna` 슬라이스)
-- P2 진행: 공지사항(`notice` 슬라이스, 2026-09-14 - 전체 공지는 관리자, 분반 공지는 운영진 이상. docs notice/design.md) · 예정: 출석부 · 자동채점(Judge0)
+- P2 진행: 공지사항(`notice` 슬라이스, 2026-09-14 - 전체 공지는 관리자, 분반 공지는 운영진 이상. docs notice/design.md) · 출석부(`attendance` 슬라이스, 2026-09-14 - 차시 Session + 출석 기록, 표시는 운영진, 출석률은 서버 계산. docs attendance/design.md) · 예정: 자동채점(Judge0)
