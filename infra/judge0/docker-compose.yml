@@ -1,0 +1,53 @@
+# Judge0 CE 1.13.1 - 채점 엔진 (docs judge/infra.md)
+#
+# 어디서 도는가: 해달 서버의 Ubuntu 22.04 VM(multipass) 안 - 호스트 커널(7.0, cgroup v2 전용)에서는 1.13.1 이 돌지 않는다 (infra.md 3절)
+# 절차:        infra.md 4절 (cp judge0.conf.example judge0.conf → 비밀값 채움 → up -d db redis → 10초 → up -d)
+# 포트:        2358 은 VM 내부 브리지(10.x)에만 열린다 - 인터넷·nginx 미노출. BE 만 X-Auth-Token 으로 호출
+# 원본:        https://github.com/judge0/judge0/releases/tag/v1.13.1 의 docker-compose.yml 과 동일 구조, 설정 파일만 우리 값
+
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100M
+
+services:
+  server:
+    image: judge0/judge0:1.13.1
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    ports:
+      - "2358:2358"
+    privileged: true      # isolate 샌드박스가 cgroup 을 직접 다룬다 - Judge0 공식 요구
+    <<: *default-logging
+    restart: always
+
+  workers:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    <<: *default-logging
+    restart: always
+
+  db:
+    image: postgres:13.0
+    env_file: judge0.conf
+    volumes:
+      - data:/var/lib/postgresql/data/
+    <<: *default-logging
+    restart: always
+
+  redis:
+    image: redis:6.0
+    command: [
+      "bash", "-c",
+      'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"'
+    ]
+    env_file: judge0.conf
+    <<: *default-logging
+    restart: always
+
+volumes:
+  data:
