@@ -7,6 +7,8 @@ import kr.haedal.ondal.cohort.repository.CohortRepository;
 import kr.haedal.ondal.enrollment.entity.Enrollment;
 import kr.haedal.ondal.enrollment.repository.EnrollmentRepository;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
+import kr.haedal.ondal.notice.entity.Notice;
+import kr.haedal.ondal.notice.repository.NoticeRepository;
 import kr.haedal.ondal.qna.entity.Question;
 import kr.haedal.ondal.qna.repository.QuestionRepository;
 import kr.haedal.ondal.submission.entity.Submission;
@@ -51,6 +53,7 @@ public class LocalDataSeeder implements CommandLineRunner {
     private final AssignmentRepository assignmentRepository;
     private final SubmissionRepository submissionRepository;
     private final QuestionRepository questionRepository;
+    private final NoticeRepository noticeRepository;
 
     public LocalDataSeeder(UserRepository userRepository,
                            UserService userService,
@@ -58,7 +61,8 @@ public class LocalDataSeeder implements CommandLineRunner {
                            EnrollmentRepository enrollmentRepository,
                            AssignmentRepository assignmentRepository,
                            SubmissionRepository submissionRepository,
-                           QuestionRepository questionRepository) {
+                           QuestionRepository questionRepository,
+                           NoticeRepository noticeRepository) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.cohortRepository = cohortRepository;
@@ -66,6 +70,7 @@ public class LocalDataSeeder implements CommandLineRunner {
         this.assignmentRepository = assignmentRepository;
         this.submissionRepository = submissionRepository;
         this.questionRepository = questionRepository;
+        this.noticeRepository = noticeRepository;
     }
 
     @Override
@@ -102,8 +107,9 @@ public class LocalDataSeeder implements CommandLineRunner {
 
         seedSubmissions(session1, session2, now);
         seedQuestions(current);
+        seedNotices(current);
 
-        log.info("[seed] 샘플 분반 생성: '{}'(ACTIVE, 과제 3개 + 제출 시나리오 4종), '{}'(ARCHIVED). 계정: operator1, student1~3",
+        log.info("[seed] 샘플 분반 생성: '{}'(ACTIVE, 과제 3개 + 제출 시나리오 4종 + 질문 2건 + 공지 2건), '{}'(ARCHIVED). 계정: operator1, student1~3",
                 current.getName(), past.getName());
     }
 
@@ -140,6 +146,16 @@ public class LocalDataSeeder implements CommandLineRunner {
                 "A와 B가 한 줄에 공백으로 들어온다고 했는데, 줄바꿈으로 나뉘어 들어오는 경우도 처리해야 하나요?"));
         questionRepository.save(Question.create(current, student2, "제출 후 코드를 수정하면 어떻게 되나요?",
                 "이미 제출한 과제의 코드를 고쳐 다시 제출하면 이전 제출은 사라지나요, 아니면 이력이 남나요?"));
+    }
+
+    /** 전체 공지(관리자, 필독) 1건 + 분반 공지(operator1) 1건 - FE 가 필독 정렬·대상 표시·버튼 분기를 바로 확인. FE mock 데이터와 동일하게 유지 */
+    private void seedNotices(Cohort current) {
+        User admin = userRepository.findByLoginId("admin").orElseThrow();
+        User operator1 = userService.findOrCreateMember("operator1");
+        noticeRepository.save(Notice.global(admin, "2026-2 부트캠프 운영 안내",
+                "과제는 마감 전까지 몇 번이든 다시 제출할 수 있습니다. 마감 후 제출은 지각으로 표시되며, 질문은 분반 Q&A 게시판을 이용해 주세요.", true));
+        noticeRepository.save(Notice.forCohort(current, operator1, "2026-2 C언어 첫 모임 안내",
+                "첫 모임은 개강 주 화요일 19:00 공대 4호관 실습실입니다. 노트북과 충전기를 가져오세요.", false));
     }
 
     private void enroll(Cohort cohort, String loginId, EnrollmentRole role) {
