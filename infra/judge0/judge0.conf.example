@@ -1,0 +1,79 @@
+################################################################################
+# Judge0 1.13.1 설정 - Ondal 용 (docs judge/infra.md 5절)
+# 사용: cp judge0.conf.example judge0.conf 후 <...> 자리를 채운다. judge0.conf 는 gitignore (비밀값)
+# 여기 없는 변수는 Judge0 기본값 - 전체 목록: https://github.com/judge0/judge0/blob/v1.13.1/judge0.conf
+################################################################################
+
+# ---- 서버 -------------------------------------------------------------------
+JUDGE0_TELEMETRY_ENABLE=false
+RESTART_MAX_TRIES=10
+MAINTENANCE_MODE=false
+MAINTENANCE_MESSAGE=Judge0 is currently in maintenance.
+
+# BE 는 폴링만 쓴다 - 동기 대기·콜백·부가 입력면은 닫는다 (design.md 결정 5, infra.md 5절)
+ENABLE_WAIT_RESULT=false
+ENABLE_COMPILER_OPTIONS=false
+ENABLE_COMMAND_LINE_ARGUMENTS=false
+ENABLE_SUBMISSION_DELETE=false
+ENABLE_BATCHED_SUBMISSIONS=true
+MAX_SUBMISSION_BATCH_SIZE=50
+ENABLE_CALLBACKS=false
+ENABLE_ADDITIONAL_FILES=false
+SUBMISSION_CACHE_DURATION=1
+USE_DOCS_AS_HOMEPAGE=false
+
+# ---- 워커 -------------------------------------------------------------------
+INTERVAL=0.1
+COUNT=2
+MAX_QUEUE_SIZE=500
+
+# ---- 접근 제어 - BE 외 호출 차단 -----------------------------------------------
+AUTHN_HEADER=X-Auth-Token
+AUTHN_TOKEN=<openssl rand -hex 32>
+AUTHZ_HEADER=X-Auth-User
+AUTHZ_TOKEN=
+
+# ---- Redis (compose 의 redis 서비스) -----------------------------------------
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=<openssl rand -hex 16>
+
+# ---- PostgreSQL (compose 의 db 서비스) -----------------------------------------
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+POSTGRES_DB=judge0
+POSTGRES_USER=judge0
+POSTGRES_PASSWORD=<openssl rand -hex 16>
+
+# ---- 제출 기본값·상한 - 출제 폼 기본값(2초·256MB)과 상한(15초·512MB)에 맞춤 -------------
+CPU_TIME_LIMIT=2
+MAX_CPU_TIME_LIMIT=15
+CPU_EXTRA_TIME=0.5
+MAX_CPU_EXTRA_TIME=5
+WALL_TIME_LIMIT=5
+MAX_WALL_TIME_LIMIT=30
+MEMORY_LIMIT=262144
+MAX_MEMORY_LIMIT=524288
+STACK_LIMIT=64000
+MAX_STACK_LIMIT=128000
+MAX_PROCESSES_AND_OR_THREADS=60
+MAX_MAX_PROCESSES_AND_OR_THREADS=120
+ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT=false
+ALLOW_ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT=false
+ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT=false
+ALLOW_ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT=false
+MAX_FILE_SIZE=1024
+MAX_MAX_FILE_SIZE=4096
+NUMBER_OF_RUNS=1
+MAX_NUMBER_OF_RUNS=1
+REDIRECT_STDERR_TO_STDOUT=false
+MAX_EXTRACT_SIZE=10240
+# 제출 코드의 네트워크 완전 차단
+ENABLE_NETWORK=false
+ALLOW_ENABLE_NETWORK=false
+
+# ---- Rails ----------------------------------------------------------------------
+RAILS_ENV=production
+RAILS_MAX_THREADS=4
+RAILS_SERVER_PROCESSES=2
+SECRET_KEY_BASE=<openssl rand -hex 64>

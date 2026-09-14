@@ -44,3 +44,6 @@ out/
 
 # 로컬 curl 세션 쿠키 파일 (README 동작 확인 예시) - 세션 ID가 담기므로 커밋 금지
 cookie.txt
+
+# Judge0 설정 - 비밀값(토큰·비밀번호) 포함, 서버(VM)에만 존재 (infra/judge0/README.md)
+infra/judge0/judge0.conf
