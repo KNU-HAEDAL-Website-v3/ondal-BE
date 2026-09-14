@@ -81,13 +81,19 @@ public class Submission {
     @Column(nullable = false, updatable = false)
     private Instant submittedAt;
 
-    /** [P2 준비] 채점 점수 - P1에서는 항상 null, API 미노출 (docs/db/schema.md) */
-    @Column(name = "score")
-    private Integer score;
-
-    /** [P2 준비] 멘토 코멘트 - P1에서는 항상 null, API 미노출 */
+    /**
+     * 운영진 코멘트 - 제출 1건에 1개, 덮어쓰기(docs submission/design.md 결정 18). 점수는 없다(2026-09-14 PM 확정 - 결과는 채점 엔진이 말한다).
+     * 세 열이 함께 null 이거나 함께 값이 있다. commentedBy 는 마지막으로 코멘트를 남긴(수정한) 운영진
+     */
     @Column(name = "mentor_comment", columnDefinition = "text")
     private String mentorComment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "commented_by")
+    private User commentedBy;
+
+    @Column(name = "commented_at")
+    private Instant commentedAt;
 
     protected Submission() {
         // JPA 스펙이 요구하는 기본 생성자
@@ -131,6 +137,24 @@ public class Submission {
         return submission;
     }
 
+    /** 코멘트 남기기·덮어쓰기 - 운영진 이상(권한은 컨트롤러 어노테이션이 보장) */
+    public void comment(String content, User by) {
+        this.mentorComment = content;
+        this.commentedBy = by;
+        this.commentedAt = Instant.now();
+    }
+
+    /** 코멘트 지우기 - 세 열을 함께 비운다 */
+    public void clearComment() {
+        this.mentorComment = null;
+        this.commentedBy = null;
+        this.commentedAt = null;
+    }
+
+    public boolean hasComment() {
+        return mentorComment != null;
+    }
+
     public boolean hasFile() {
         return storedPath != null;
     }
@@ -151,4 +175,7 @@ public class Submission {
     public Long getFileSize() { return fileSize; }
     public List<SubmissionLink> getLinks() { return links; }
     public Instant getSubmittedAt() { return submittedAt; }
+    public String getMentorComment() { return mentorComment; }
+    public User getCommentedBy() { return commentedBy; }
+    public Instant getCommentedAt() { return commentedAt; }
 }
