@@ -5,8 +5,10 @@ import kr.haedal.ondal.cohort.entity.Cohort;
 import kr.haedal.ondal.enrollment.entity.Enrollment;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
 import kr.haedal.ondal.enrollment.repository.EnrollmentRepository;
+import kr.haedal.ondal.qna.dto.AnswerCount;
 import kr.haedal.ondal.qna.dto.QuestionResponse;
 import kr.haedal.ondal.qna.entity.Question;
+import kr.haedal.ondal.qna.repository.AnswerRepository;
 import kr.haedal.ondal.user.dto.UserSummary;
 import kr.haedal.ondal.user.entity.User;
 import org.springframework.stereotype.Component;
@@ -29,10 +31,14 @@ public class QuestionResponseAssembler {
 
     private final EnrollmentRepository enrollmentRepository;
     private final CohortAuthorizer cohortAuthorizer;
+    private final AnswerRepository answerRepository;
 
-    public QuestionResponseAssembler(EnrollmentRepository enrollmentRepository, CohortAuthorizer cohortAuthorizer) {
+    public QuestionResponseAssembler(EnrollmentRepository enrollmentRepository,
+                                     CohortAuthorizer cohortAuthorizer,
+                                     AnswerRepository answerRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.cohortAuthorizer = cohortAuthorizer;
+        this.answerRepository = answerRepository;
     }
 
     public QuestionResponse toResponse(Question question, Cohort cohort, User viewer) {
@@ -48,6 +54,9 @@ public class QuestionResponseAssembler {
                 .collect(Collectors.toMap(e -> e.getUser().getId(), Enrollment::getRole));
         EnrollmentRole myRole = roles.get(viewer.getId());
         boolean canModerate = cohortAuthorizer.canManage(viewer, cohort, myRole);
+        // 답변 수 - 분반 단위 1회 집계 (질문 N개에 대해 쿼리 1번)
+        Map<Long, Long> answerCounts = answerRepository.countByCohortIdGroupByQuestion(cohort.getId()).stream()
+                .collect(Collectors.toMap(AnswerCount::questionId, AnswerCount::count));
 
         return questions.stream()
                 .map(question -> {
@@ -55,7 +64,7 @@ public class QuestionResponseAssembler {
                     boolean canEdit = cohort.isActive() && question.isWrittenBy(viewer);
                     // 분반에서 빠진 작성자(roles 에 없음)는 일반 수강생으로 표시된다 - 글은 남고 직책만 사라진다
                     return QuestionResponse.of(question, UserSummary.of(author, roles.get(author.getId())),
-                            canEdit, canEdit || canModerate);
+                            canEdit, canEdit || canModerate, answerCounts.getOrDefault(question.getId(), 0L));
                 })
                 .toList();
     }
