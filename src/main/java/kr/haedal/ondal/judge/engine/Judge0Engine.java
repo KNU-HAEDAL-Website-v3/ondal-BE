@@ -3,6 +3,8 @@ package kr.haedal.ondal.judge.engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -60,6 +62,24 @@ public class Judge0Engine implements JudgeEngine {
     @Override
     public boolean available() {
         return configured;
+    }
+
+    /**
+     * 기동 직후 연결 확인 - GET /languages 1회. 실패해도 기동은 계속(워커가 재시도한다) - 운영자가 `docker compose logs ondal-be | grep judge` 한 줄로 연결 상태를 본다.
+     * 컨테이너 → VM(multipass 브리지) 라우팅이 막혔을 때 이 WARN 이 첫 단서 (docs judge/infra.md 4절-3).
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void logConnectivity() {
+        try {
+            String raw = client.get().uri("/languages").retrieve().body(String.class);
+            JsonNode languages = raw == null ? null : objectMapper.readTree(raw);
+            int count = languages != null && languages.isArray() ? languages.size() : -1;
+            log.info("[judge] Judge0 연결 확인 OK - {} 언어 사용 가능 ({})", count, properties.judge0().url());
+        } catch (RestClientResponseException e) {
+            log.warn("[judge] Judge0 연결은 되지만 응답 {} - 토큰(JUDGE0_TOKEN = judge0.conf AUTHN_TOKEN)을 확인하세요: {}", e.getStatusCode().value(), JudgeResultText.head(e.getResponseBodyAsString(), 200));
+        } catch (RuntimeException e) {
+            log.warn("[judge] Judge0 연결 실패 - {} ({}). 채점은 PENDING 으로 대기하며 재시도합니다. VM 기동·2358 포트·컨테이너→VM 라우팅(iptables DOCKER-USER) 확인", e.getMessage(), properties.judge0().url());
+        }
     }
 
     @Override
