@@ -33,9 +33,12 @@ public record AssignmentResponse(
         SubmissionStatus myStatus,
 
         @Schema(description = "제출 이력 총 건수 - 운영진·관리자에게만 값, 수강생은 null. 과제 삭제 확인 창의 \"제출물 N건 삭제\" 경고가 이 값을 쓴다")
-        Integer submissionCount
+        Integer submissionCount,
+
+        @Schema(description = "자동 채점 문제인가 = 테스트케이스 1개 이상 (judge/design.md 결정 1). 목록 배지·상세 예시 절 표시 여부")
+        boolean judgeEnabled
 ) {
-    public static AssignmentResponse of(Assignment assignment, SubmissionStatus myStatus, Integer submissionCount) {
+    public static AssignmentResponse of(Assignment assignment, SubmissionStatus myStatus, Integer submissionCount, boolean judgeEnabled) {
         return new AssignmentResponse(
                 assignment.getId(),
                 assignment.getProblemNo(),
@@ -45,7 +48,8 @@ public record AssignmentResponse(
                 assignment.getDueAt(),
                 assignment.getCreatedAt(),
                 myStatus,
-                submissionCount
+                submissionCount,
+                judgeEnabled
         );
     }
 }

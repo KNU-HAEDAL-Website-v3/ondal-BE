@@ -5,6 +5,7 @@ import kr.haedal.ondal.assignment.entity.Assignment;
 import kr.haedal.ondal.enrollment.entity.Enrollment;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
 import kr.haedal.ondal.enrollment.repository.EnrollmentRepository;
+import kr.haedal.ondal.judge.repository.TestCaseRepository;
 import kr.haedal.ondal.submission.dto.AssignmentSubmissionCount;
 import kr.haedal.ondal.submission.dto.SubmissionMoment;
 import kr.haedal.ondal.submission.entity.SubmissionStatus;
@@ -13,8 +14,10 @@ import kr.haedal.ondal.user.entity.User;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -30,11 +33,14 @@ public class AssignmentResponseAssembler {
 
     private final SubmissionRepository submissionRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final TestCaseRepository testCaseRepository;
 
     public AssignmentResponseAssembler(SubmissionRepository submissionRepository,
-                                       EnrollmentRepository enrollmentRepository) {
+                                       EnrollmentRepository enrollmentRepository,
+                                       TestCaseRepository testCaseRepository) {
         this.submissionRepository = submissionRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.testCaseRepository = testCaseRepository;
     }
 
     public AssignmentResponse toResponse(Assignment assignment, Long cohortId, User viewer) {
@@ -63,12 +69,16 @@ public class AssignmentResponseAssembler {
                         .collect(Collectors.toMap(AssignmentSubmissionCount::assignmentId, AssignmentSubmissionCount::count))
                 : Map.of();
 
+        // judgeEnabled: 케이스가 있는 과제 id 만 쿼리 1번 (judge/design.md 결정 1)
+        Set<Long> judged = new HashSet<>(testCaseRepository.findAssignmentIdsWithCases(assignmentIds));
+
         return assignments.stream()
                 .map(assignment -> AssignmentResponse.of(
                         assignment,
                         myRole == null ? null : SubmissionStatus.from(
                                 mySubmittedAts.getOrDefault(assignment.getId(), List.of()), assignment.getDueAt()),
-                        canSeeCount ? counts.getOrDefault(assignment.getId(), 0L).intValue() : null))
+                        canSeeCount ? counts.getOrDefault(assignment.getId(), 0L).intValue() : null,
+                        judged.contains(assignment.getId())))
                 .toList();
     }
 }

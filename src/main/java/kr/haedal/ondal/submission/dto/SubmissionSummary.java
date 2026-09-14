@@ -1,6 +1,9 @@
 package kr.haedal.ondal.submission.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import kr.haedal.ondal.judge.entity.JudgeResult;
+import kr.haedal.ondal.judge.entity.JudgeStatus;
+import kr.haedal.ondal.judge.entity.Verdict;
 import kr.haedal.ondal.submission.entity.Submission;
 import kr.haedal.ondal.submission.entity.SubmissionType;
 
@@ -26,9 +29,11 @@ public record SubmissionSummary(
         @Schema(description = "지각 여부 - 서버 판정값. 프론트 재계산 금지")
         boolean late,
         @Schema(description = "운영진 코멘트가 달렸는가 - 목록 행의 '코멘트' 표시용. 내용은 단건(#20)에서")
-        boolean hasComment
+        boolean hasComment,
+        @Schema(description = "채점 상태 - 채점 대상이 아니면 null") JudgeStatus judgeStatus,
+        @Schema(description = "판정 - DONE·ERROR 일 때만, 아니면 null. 표의 채점 결과 열") Verdict verdict
 ) {
-    public static SubmissionSummary of(Submission submission, Instant dueAt) {
+    public static SubmissionSummary of(Submission submission, Instant dueAt, JudgeResult judge) {
         return new SubmissionSummary(
                 submission.getId(),
                 submission.getType(),
@@ -38,7 +43,9 @@ public record SubmissionSummary(
                 submission.getLinkUrls(),
                 submission.getSubmittedAt(),
                 submission.getSubmittedAt().isAfter(dueAt),
-                submission.hasComment()
+                submission.hasComment(),
+                judge == null ? null : judge.getStatus(),
+                judge == null ? null : judge.getVerdict()
         );
     }
 }

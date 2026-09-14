@@ -1,6 +1,8 @@
 package kr.haedal.ondal.submission.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import kr.haedal.ondal.judge.entity.JudgeStatus;
+import kr.haedal.ondal.judge.entity.Verdict;
 import kr.haedal.ondal.submission.entity.SubmissionStatus;
 import kr.haedal.ondal.user.dto.UserSummary;
 
@@ -26,6 +28,12 @@ public record StatusBoardRow(
         Long latestSubmissionId,
 
         @Schema(description = "최신 제출에 운영진 코멘트가 달렸는가 - 운영진이 아직 검토하지 않은 제출을 한눈에. 제출 없으면 false")
-        boolean latestCommented
+        boolean latestCommented,
+
+        @Schema(description = "최신 제출의 채점 상태 - 채점 대상이 아니거나 제출 없음이면 null")
+        JudgeStatus latestJudgeStatus,
+
+        @Schema(description = "최신 제출의 판정 - DONE·ERROR 일 때만. 현황판 판정 열")
+        Verdict latestVerdict
 ) {
 }

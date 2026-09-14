@@ -10,6 +10,7 @@ import kr.haedal.ondal.cohort.entity.Cohort;
 import kr.haedal.ondal.cohort.repository.CohortRepository;
 import kr.haedal.ondal.common.error.ConflictException;
 import kr.haedal.ondal.common.error.NotFoundException;
+import kr.haedal.ondal.judge.service.JudgeService;
 import kr.haedal.ondal.submission.service.SubmissionService;
 import kr.haedal.ondal.user.entity.User;
 import org.springframework.stereotype.Service;
@@ -32,15 +33,18 @@ public class AssignmentService {
     private final CohortRepository cohortRepository;
     private final AssignmentResponseAssembler assembler;
     private final SubmissionService submissionService;
+    private final JudgeService judgeService;
 
     public AssignmentService(AssignmentRepository assignmentRepository,
                              CohortRepository cohortRepository,
                              AssignmentResponseAssembler assembler,
-                             SubmissionService submissionService) {
+                             SubmissionService submissionService,
+                             JudgeService judgeService) {
         this.assignmentRepository = assignmentRepository;
         this.cohortRepository = cohortRepository;
         this.assembler = assembler;
         this.submissionService = submissionService;
+        this.judgeService = judgeService;
     }
 
     /** 목록 - 차시 오름차순(차시 없음 마지막) → 등록순. 보관 분반도 열람은 유지된다 */
@@ -77,6 +81,7 @@ public class AssignmentService {
     public void delete(Long cohortId, Long assignmentId) {
         requireCohort(cohortId).ensureActive();
         Assignment assignment = requireAssignment(cohortId, assignmentId);
+        judgeService.deleteAllOf(assignment.getId());        // judge_results(제출 FK) → test_cases: 제출보다 먼저 (judge/design.md 결정 16)
         submissionService.deleteAllOf(assignment.getId());
         assignmentRepository.delete(assignment);
     }

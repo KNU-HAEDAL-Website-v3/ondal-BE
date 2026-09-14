@@ -51,6 +51,14 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("CONFLICT", e.getMessage()));
     }
 
+    /** 외부 구성 요소(채점 엔진) 이용 불가 - 코드는 던진 쪽이 정한다 (JUDGE_UNAVAILABLE). FE 는 "엔진 연결 후 다시" 안내 */
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(ServiceUnavailableException e) {
+        log.warn("서비스 이용 불가: {} - {}", e.getCode(), e.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse(e.getCode(), e.getMessage()));
+    }
+
     @ExceptionHandler(CohortArchivedException.class)
     public ResponseEntity<ErrorResponse> handleCohortArchived(CohortArchivedException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

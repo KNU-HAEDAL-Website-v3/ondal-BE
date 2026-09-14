@@ -11,6 +11,8 @@ import kr.haedal.ondal.submission.dto.SubmissionCommentRequest;
 import kr.haedal.ondal.enrollment.entity.Enrollment;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
 import kr.haedal.ondal.enrollment.repository.EnrollmentRepository;
+import kr.haedal.ondal.judge.entity.JudgeResult;
+import kr.haedal.ondal.judge.service.JudgeService;
 import kr.haedal.ondal.submission.dto.StatusBoardRow;
 import kr.haedal.ondal.submission.dto.SubmissionCreateRequest;
 import kr.haedal.ondal.submission.dto.SubmissionFile;
@@ -31,6 +33,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -52,17 +55,20 @@ public class SubmissionService {
     private final CohortRepository cohortRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final FileStorage fileStorage;
+    private final JudgeService judgeService;
 
     public SubmissionService(SubmissionRepository submissionRepository,
                              AssignmentRepository assignmentRepository,
                              CohortRepository cohortRepository,
                              EnrollmentRepository enrollmentRepository,
-                             FileStorage fileStorage) {
+                             FileStorage fileStorage,
+                             JudgeService judgeService) {
         this.submissionRepository = submissionRepository;
         this.assignmentRepository = assignmentRepository;
         this.cohortRepository = cohortRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.fileStorage = fileStorage;
+        this.judgeService = judgeService;
     }
 
     /** #18 제출 - 운영진·관리자도 가능(현황판 명단은 STUDENT만이라 통계를 오염하지 않는다) */
@@ -79,6 +85,7 @@ public class SubmissionService {
                 : request.linkUrls().stream().map(url -> url == null ? "" : url.trim()).toList();
         boolean hasFile = file != null && !file.isEmpty();
         validate(type, codeText, language, linkUrls, hasFile, file);
+        judgeService.validateSubmittable(assignment, type, language);   // 자동 채점 문제의 CODE 는 지원 언어만 (judge/design.md 결정 7)
 
         // 순서: 검증 → 디스크 저장 → DB insert. DB가 실패하면 방금 저장한 파일을 지워 고아 파일을 막는다
         String storedPath = type == SubmissionType.FILE ? fileStorage.store(file) : null;
@@ -95,6 +102,7 @@ public class SubmissionService {
             }
             throw e;
         }
+        judgeService.enqueueIfJudged(submission);   // CODE + 테스트케이스 있으면 PENDING 행 + 커밋 뒤 채점 (judge/design.md 결정 5)
         return toResponse(cohortId, submission, assignment.getDueAt());
     }
 
@@ -102,8 +110,10 @@ public class SubmissionService {
     @Transactional(readOnly = true)
     public List<SubmissionSummary> findMy(Long cohortId, Long assignmentId, User viewer) {
         Assignment assignment = requireAssignment(cohortId, assignmentId);
-        return submissionRepository.findAllByAssignmentIdAndUserIdOrderBySubmittedAtDesc(assignmentId, viewer.getId()).stream()
-                .map(submission -> SubmissionSummary.of(submission, assignment.getDueAt()))
+        List<Submission> submissions = submissionRepository.findAllByAssignmentIdAndUserIdOrderBySubmittedAtDesc(assignmentId, viewer.getId());
+        Map<Long, JudgeResult> judges = judgeService.resultsOf(submissions.stream().map(Submission::getId).toList());
+        return submissions.stream()
+                .map(submission -> SubmissionSummary.of(submission, assignment.getDueAt(), judges.get(submission.getId())))
                 .toList();
     }
 
@@ -138,7 +148,7 @@ public class SubmissionService {
         SubmissionComment comment = submission.hasComment()
                 ? new SubmissionComment(submission.getMentorComment(), summaryOf(cohortId, submission.getCommentedBy()), submission.getCommentedAt())
                 : null;
-        return SubmissionResponse.of(submission, dueAt, summaryOf(cohortId, submission.getUser()), comment);
+        return SubmissionResponse.of(submission, dueAt, summaryOf(cohortId, submission.getUser()), comment, judgeService.resultOf(submission));
     }
 
     /** #21 파일 다운로드 - 권한은 #20과 동일. 파일 없는 제출(코드·링크)은 404 */
@@ -159,9 +169,15 @@ public class SubmissionService {
         Map<Long, List<SubmissionMoment>> momentsByUser = submissionRepository.findMomentsByAssignmentId(assignmentId).stream()
                 .collect(Collectors.groupingBy(SubmissionMoment::userId));
 
+        // 최신 제출(대표)의 채점 결과 - 쿼리 1번
+        Map<Long, JudgeResult> judges = judgeService.resultsOf(momentsByUser.values().stream()
+                .map(list -> list.stream().max(Comparator.comparing(SubmissionMoment::submittedAt)).map(SubmissionMoment::submissionId).orElse(null))
+                .filter(Objects::nonNull)
+                .toList());
+
         return enrollmentRepository.findAllByCohortIdWithUser(cohortId).stream()
                 .filter(enrollment -> !enrollment.isOperator())
-                .map(enrollment -> toRow(enrollment, momentsByUser, assignment.getDueAt()))
+                .map(enrollment -> toRow(enrollment, momentsByUser, assignment.getDueAt(), judges))
                 .sorted(Comparator.comparing(row -> row.user().name()))
                 .toList();
     }
@@ -254,18 +270,22 @@ public class SubmissionService {
         return UserSummary.of(user, role);
     }
 
-    private StatusBoardRow toRow(Enrollment enrollment, Map<Long, List<SubmissionMoment>> momentsByUser, Instant dueAt) {
+    private StatusBoardRow toRow(Enrollment enrollment, Map<Long, List<SubmissionMoment>> momentsByUser, Instant dueAt,
+                                 Map<Long, JudgeResult> judges) {
         List<SubmissionMoment> moments = momentsByUser.getOrDefault(enrollment.getUser().getId(), List.of());
         List<Instant> submittedAts = moments.stream().map(SubmissionMoment::submittedAt).toList();
         // 최신 제출 = 대표 - 운영진은 이 id로 상세(#20)·파일(#21)에 진입한다
         SubmissionMoment latest = moments.stream().max(Comparator.comparing(SubmissionMoment::submittedAt)).orElse(null);
+        JudgeResult judge = latest == null ? null : judges.get(latest.submissionId());
         return new StatusBoardRow(
                 UserSummary.of(enrollment.getUser(), enrollment.getRole()),
                 SubmissionStatus.from(submittedAts, dueAt),
                 moments.size(),
                 latest == null ? null : latest.submittedAt(),
                 latest == null ? null : latest.submissionId(),
-                latest != null && latest.commented());
+                latest != null && latest.commented(),
+                judge == null ? null : judge.getStatus(),
+                judge == null ? null : judge.getVerdict());
     }
 
     private Cohort requireCohort(Long cohortId) {
