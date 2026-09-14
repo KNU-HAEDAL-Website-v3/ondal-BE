@@ -24,10 +24,13 @@ public record QuestionResponse(
         boolean canEdit,
 
         @Schema(description = "요청자가 이 글을 삭제할 수 있는가 - 작성자 본인 또는 운영진 이상(관리자 포함)이고 분반이 ACTIVE 일 때 true")
-        boolean canDelete
+        boolean canDelete,
+
+        @Schema(description = "답변 수 - 목록의 '답변 N' 표시용 (2026-09-14 답변 편입)")
+        long answerCount
 ) {
     /** 여러 값을 조합하므로 from(entity)가 아니라 of(...) */
-    public static QuestionResponse of(Question question, UserSummary author, boolean canEdit, boolean canDelete) {
+    public static QuestionResponse of(Question question, UserSummary author, boolean canEdit, boolean canDelete, long answerCount) {
         return new QuestionResponse(
                 question.getId(),
                 question.getTitle(),
@@ -35,7 +38,8 @@ public record QuestionResponse(
                 author,
                 question.getCreatedAt(),
                 canEdit,
-                canDelete
+                canDelete,
+                answerCount
         );
     }
 }

@@ -14,7 +14,9 @@ import kr.haedal.ondal.attendance.repository.AttendanceRepository;
 import kr.haedal.ondal.attendance.repository.SessionRepository;
 import kr.haedal.ondal.notice.entity.Notice;
 import kr.haedal.ondal.notice.repository.NoticeRepository;
+import kr.haedal.ondal.qna.entity.Answer;
 import kr.haedal.ondal.qna.entity.Question;
+import kr.haedal.ondal.qna.repository.AnswerRepository;
 import kr.haedal.ondal.qna.repository.QuestionRepository;
 import kr.haedal.ondal.submission.entity.Submission;
 import kr.haedal.ondal.submission.entity.SubmissionType;
@@ -61,6 +63,7 @@ public class LocalDataSeeder implements CommandLineRunner {
     private final NoticeRepository noticeRepository;
     private final SessionRepository sessionRepository;
     private final AttendanceRepository attendanceRepository;
+    private final AnswerRepository answerRepository;
 
     public LocalDataSeeder(UserRepository userRepository,
                            UserService userService,
@@ -71,7 +74,8 @@ public class LocalDataSeeder implements CommandLineRunner {
                            QuestionRepository questionRepository,
                            NoticeRepository noticeRepository,
                            SessionRepository sessionRepository,
-                           AttendanceRepository attendanceRepository) {
+                           AttendanceRepository attendanceRepository,
+                           AnswerRepository answerRepository) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.cohortRepository = cohortRepository;
@@ -82,6 +86,7 @@ public class LocalDataSeeder implements CommandLineRunner {
         this.noticeRepository = noticeRepository;
         this.sessionRepository = sessionRepository;
         this.attendanceRepository = attendanceRepository;
+        this.answerRepository = answerRepository;
     }
 
     @Override
@@ -154,10 +159,14 @@ public class LocalDataSeeder implements CommandLineRunner {
     private void seedQuestions(Cohort current) {
         User student1 = userService.findOrCreateMember("student1");
         User student2 = userService.findOrCreateMember("student2");
-        questionRepository.save(Question.create(current, student1, "1차시 과제 입력 형식 질문",
+        Question first = questionRepository.save(Question.create(current, student1, "1차시 과제 입력 형식 질문",
                 "A와 B가 한 줄에 공백으로 들어온다고 했는데, 줄바꿈으로 나뉘어 들어오는 경우도 처리해야 하나요?"));
         questionRepository.save(Question.create(current, student2, "제출 후 코드를 수정하면 어떻게 되나요?",
                 "이미 제출한 과제의 코드를 고쳐 다시 제출하면 이전 제출은 사라지나요, 아니면 이력이 남나요?"));
+        // 답변 1건(운영진) - FE 가 답변 목록·답변 수·버튼 분기를 바로 확인. FE mock 과 동일
+        User operator1 = userService.findOrCreateMember("operator1");
+        answerRepository.save(Answer.create(first, operator1,
+                "scanf(\"%d %d\", &a, &b) 는 공백과 줄바꿈을 모두 구분자로 읽으니 따로 처리하지 않아도 됩니다."));
     }
 
     /** 전체 공지(관리자, 필독) 1건 + 분반 공지(operator1) 1건 - FE 가 필독 정렬·대상 표시·버튼 분기를 바로 확인. FE mock 데이터와 동일하게 유지 */

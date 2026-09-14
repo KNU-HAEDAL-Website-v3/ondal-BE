@@ -10,6 +10,7 @@ import kr.haedal.ondal.qna.dto.QuestionCreateRequest;
 import kr.haedal.ondal.qna.dto.QuestionResponse;
 import kr.haedal.ondal.qna.dto.QuestionUpdateRequest;
 import kr.haedal.ondal.qna.entity.Question;
+import kr.haedal.ondal.qna.repository.AnswerRepository;
 import kr.haedal.ondal.qna.repository.QuestionRepository;
 import kr.haedal.ondal.user.entity.User;
 import org.springframework.stereotype.Service;
@@ -29,15 +30,18 @@ import java.util.List;
 public class QuestionService {
 
     private final QuestionRepository questionRepository;
+    private final AnswerRepository answerRepository;
     private final CohortRepository cohortRepository;
     private final CohortAuthorizer cohortAuthorizer;
     private final QuestionResponseAssembler assembler;
 
     public QuestionService(QuestionRepository questionRepository,
+                           AnswerRepository answerRepository,
                            CohortRepository cohortRepository,
                            CohortAuthorizer cohortAuthorizer,
                            QuestionResponseAssembler assembler) {
         this.questionRepository = questionRepository;
+        this.answerRepository = answerRepository;
         this.cohortRepository = cohortRepository;
         this.cohortAuthorizer = cohortAuthorizer;
         this.assembler = assembler;
@@ -85,6 +89,7 @@ public class QuestionService {
                 && !cohortAuthorizer.isAllowed(requester, cohortId, EnrollmentRole.OPERATOR)) {
             throw new ForbiddenException();
         }
+        answerRepository.deleteAllByQuestionId(question.getId()); // 답변 연쇄 삭제 - 서비스 주체 (schema.md 4절 규칙)
         questionRepository.delete(question);
     }
 
