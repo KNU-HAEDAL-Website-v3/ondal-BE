@@ -129,6 +129,35 @@ class OidcAuthApiTest extends ApiTestSupport {
     }
 
     @Test
+    void 한글_이름은_성_이름_순서로_붙여_저장한다() throws Exception {
+        // Keycloak 은 name 을 "given family" 로 조립하므로 한국 이름이 "철수 김" 으로 뒤집혀 온다
+        Started started = startLogin(null);
+        Map<String, Object> claims = claims(started.nonce(), "chulsoo", "철수 김");
+        claims.put("given_name", "철수");
+        claims.put("family_name", "김");
+        IDP.expectExchange("code-13", started.codeChallenge(), claims);
+        MvcResult callback = callback(started.session(), "code-13", started.state());
+
+        mockMvc.perform(get("/api/auth/me").session(sessionOf(callback)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("김철수"));
+    }
+
+    @Test
+    void 영문_이름은_name_클레임_그대로_쓴다() throws Exception {
+        Started started = startLogin(null);
+        Map<String, Object> claims = claims(started.nonce(), "jdoe", "John Doe");
+        claims.put("given_name", "John");
+        claims.put("family_name", "Doe");
+        IDP.expectExchange("code-14", started.codeChallenge(), claims);
+        MvcResult callback = callback(started.session(), "code-14", started.state());
+
+        mockMvc.perform(get("/api/auth/me").session(sessionOf(callback)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("John Doe"));
+    }
+
+    @Test
     void returnTo_가_외부_주소면_루트로_복귀() throws Exception {
         Started started = startLogin("https://evil.example/phish");
         IDP.expectExchange("code-4", started.codeChallenge(), claims(started.nonce(), "lee", "이몽룡"));
