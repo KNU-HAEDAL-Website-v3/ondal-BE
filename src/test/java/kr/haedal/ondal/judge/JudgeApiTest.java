@@ -41,20 +41,34 @@ class JudgeApiTest extends ApiTestSupport {
     @Autowired TestCaseRepository testCaseRepository;
     @Autowired JudgeResultRepository judgeResultRepository;
 
+    /** 배정(과제) id -> 배정된 문제 id. V7 이후 채점 설정은 문제 스코프라 경로를 만들 때 필요하다 */
+    private final Map<Long, Long> problemOfAssignment = new HashMap<>();
+
     // ---- 픽스처 --------------------------------------------------------------------------
 
+    /** 문제를 만들고 분반에 배정한다 - 과제 = 배정이므로 두 단계 (V7) */
     private long createAssignment(long cohortId) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/cohorts/{id}/assignments", cohortId)
-                        .session(login.admin())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("title", "A+B", "description", "두 수의 합", "dueAt", FUTURE_DUE.toString()))))
-                .andExpect(status().isCreated())
+        long assignmentId = createAssignmentOf(cohortId, "A+B", null, FUTURE_DUE);
+        MvcResult detail = mockMvc.perform(get("/api/cohorts/{id}/assignments/{aid}", cohortId, assignmentId)
+                        .session(login.admin()))
+                .andExpect(status().isOk())
                 .andReturn();
-        return readJson(result).get("id").asLong();
+        problemOfAssignment.put(assignmentId, readJson(detail).get("problemId").asLong());
+        return assignmentId;
     }
 
+    /** 채점 설정 경로 - 배정이 아니라 문제에 달린다. 인자를 그대로 둔 것은 호출부를 흔들지 않기 위해서 */
     private String judgePath(long cohortId, long assignmentId) {
-        return "/api/cohorts/" + cohortId + "/assignments/" + assignmentId + "/judge";
+        return "/api/problems/" + problemOfAssignment.get(assignmentId) + "/judge";
+    }
+
+    private long problemOf(long assignmentId) {
+        return problemOfAssignment.get(assignmentId);
+    }
+
+    /** 재채점만 분반(과제) 스코프에 남았다 - "내 반 제출만 다시 돌린다"는 분반 운영 동작이라서 */
+    private String rejudgePath(long cohortId, long assignmentId) {
+        return "/api/cohorts/" + cohortId + "/assignments/" + assignmentId + "/judge/rejudge";
     }
 
     private static Map<String, Object> testCase(String input, String expected, boolean isPublic) {
@@ -162,7 +176,7 @@ class JudgeApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.testCases.length()").value(1))
                     .andExpect(jsonPath("$.testCases[0].input").value("7\n"))
                     .andExpect(jsonPath("$.timeLimitMs").value(2000));   // null → 기본값
-            assertThat(testCaseRepository.countByAssignmentId(aid)).isEqualTo(1);
+            assertThat(testCaseRepository.countByProblemId(problemOf(aid))).isEqualTo(1);
 
             // 0개 = 해제
             Map<String, Object> none = defaultConfig(false);
@@ -201,8 +215,9 @@ class JudgeApiTest extends ApiTestSupport {
                     .andExpect(status().isBadRequest());
 
             archiveCohort(id);
+            // V7: 채점 설정은 문제의 것이라 분반 보관과 무관하다 - 보관된 분반의 과제가 가리키는 문제도 계속 손볼 수 있다
             mockMvc.perform(put(judgePath(id, aid)).session(login.member("op1")).contentType(MediaType.APPLICATION_JSON).content(json(defaultConfig(false))))
-                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("COHORT_ARCHIVED"));
+                    .andExpect(status().isOk());
             mockMvc.perform(get(judgePath(id, aid)).session(login.member("op1"))).andExpect(status().isOk());   // 조회는 유지
             restoreCohort(id);
             putConfig(id, aid, login.member("op1"), defaultConfig(false));
@@ -384,7 +399,8 @@ class JudgeApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.samples[0].input").value("1 2\n"))
                     .andExpect(jsonPath("$.samples[0].expectedOutput").value("1 2\n"))
                     .andExpect(jsonPath("$.languages.length()").value(6));
-            mockMvc.perform(get(judgePath(id, aid) + "/samples").session(login.member("outsider"))).andExpect(status().isForbidden());
+            // V7: 예시는 문제 스코프 - 분반에 속하지 않은 부원도 HOJ 에서 문제를 보므로 로그인만 되면 열린다
+            mockMvc.perform(get(judgePath(id, aid) + "/samples").session(login.member("outsider"))).andExpect(status().isOk());
         }
 
         @Test
@@ -413,32 +429,34 @@ class JudgeApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.judge.totalCases").value(1));
 
             // #51 명시 재채점 → 202
-            mockMvc.perform(post(judgePath(id, aid) + "/rejudge").session(login.member("op1")))
+            mockMvc.perform(post(rejudgePath(id, aid)).session(login.member("op1")))
                     .andExpect(status().isAccepted())
                     .andExpect(jsonPath("$.queued").value(1));
-            mockMvc.perform(post(judgePath(id, aid) + "/rejudge").session(login.member("s1"))).andExpect(status().isForbidden());
+            mockMvc.perform(post(rejudgePath(id, aid)).session(login.member("s1"))).andExpect(status().isForbidden());
 
             // 케이스 0개 → 409
             Map<String, Object> none = defaultConfig(false);
             none.put("testCases", List.of());
             putConfig(id, aid, login.member("op1"), none);
-            mockMvc.perform(post(judgePath(id, aid) + "/rejudge").session(login.member("op1"))).andExpect(status().isConflict());
+            mockMvc.perform(post(rejudgePath(id, aid)).session(login.member("op1"))).andExpect(status().isConflict());
         }
 
         @Test
-        void 과제_삭제_연쇄에_케이스와_결과가_포함된다() throws Exception {
+        void 과제를_지우면_채점_결과는_사라지고_테스트케이스는_문제에_남는다() throws Exception {
             long id = createCohort("C언어", "op1");
             enrollStudent(id, "s1");
             long aid = createAssignment(id);
             putConfig(id, aid, login.member("op1"), defaultConfig(false));
             submitCode(id, aid, login.member("s1"), "int main(){}", "C");
-            assertThat(testCaseRepository.countByAssignmentId(aid)).isEqualTo(2);
+            assertThat(testCaseRepository.countByProblemId(problemOf(aid))).isEqualTo(2);
             assertThat(judgeResultRepository.findAllByAssignmentId(aid)).hasSize(1);
 
             mockMvc.perform(delete("/api/cohorts/{id}/assignments/{aid}", id, aid).session(login.member("op1")))
                     .andExpect(status().isNoContent());
-            assertThat(testCaseRepository.countByAssignmentId(aid)).isZero();
+            // 채점 결과는 제출과 함께 사라진다
             assertThat(judgeResultRepository.findAllByAssignmentId(aid)).isEmpty();
+            // 테스트케이스는 문제의 것이라 그대로 - 같은 문제를 쓰는 다른 분반의 채점 기준이 사라지면 안 된다 (V7)
+            assertThat(testCaseRepository.countByProblemId(problemOf(aid))).isEqualTo(2);
         }
     }
 }

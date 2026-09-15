@@ -53,4 +53,25 @@ public record SubmissionResponse(
                 judge
         );
     }
+
+    /**
+     * HOJ 연습 제출 - 마감이 없으니 지각도 없고(late=false), 운영진 코멘트도 달 수 없다 (V7).
+     * dueAt 을 받는 of(...) 에 가짜 마감을 넘기는 대신 팩토리를 따로 둔다 - "연습에는 마감이 없다"가 코드에 드러나야 한다.
+     */
+    public static SubmissionResponse practice(Submission submission, UserSummary user, JudgeResultResponse judge) {
+        return new SubmissionResponse(
+                submission.getId(),
+                user,
+                submission.getType(),
+                submission.getCodeText(),
+                submission.getLanguage(),
+                null,
+                null,
+                List.of(),
+                submission.getSubmittedAt(),
+                false,
+                null,
+                judge
+        );
+    }
 }

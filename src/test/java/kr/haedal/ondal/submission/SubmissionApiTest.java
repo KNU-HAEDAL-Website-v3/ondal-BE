@@ -44,21 +44,22 @@ class SubmissionApiTest extends ApiTestSupport {
 
     // ---- 슬라이스 고유 픽스처 (support/는 PM 파일 - 여기 private 헬퍼로) ----------------------
 
+    /** V7: 문제를 만들어 분반에 배정한다 (공용 픽스처) */
     private long createAssignment(long cohortId, Instant dueAt) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/cohorts/{id}/assignments", cohortId)
-                        .session(login.admin())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("title", "과제", "description", "설명", "dueAt", dueAt.toString()))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return readJson(result).get("id").asLong();
+        return createAssignmentOf(cohortId, "과제", null, dueAt);
     }
 
+    /** 마감만 바꾼다 - PUT 은 전체 교체라 배정된 문제(problemId)를 그대로 다시 실어 보낸다 (V7) */
     private void updateDueAt(long cohortId, long assignmentId, Instant dueAt) throws Exception {
+        MvcResult current = mockMvc.perform(get("/api/cohorts/{id}/assignments/{aid}", cohortId, assignmentId)
+                        .session(login.admin()))
+                .andExpect(status().isOk())
+                .andReturn();
+        long problemId = readJson(current).get("problemId").asLong();
         mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", cohortId, assignmentId)
                         .session(login.admin())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("title", "과제", "description", "설명", "dueAt", dueAt.toString()))))
+                        .content(json(Map.of("problemId", problemId, "dueAt", dueAt.toString()))))
                 .andExpect(status().isOk());
     }
 

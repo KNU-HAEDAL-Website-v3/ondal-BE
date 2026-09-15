@@ -26,6 +26,10 @@ import kr.haedal.ondal.judge.entity.TestCase;
 import kr.haedal.ondal.judge.entity.Verdict;
 import kr.haedal.ondal.judge.repository.JudgeResultRepository;
 import kr.haedal.ondal.judge.repository.TestCaseRepository;
+import kr.haedal.ondal.problem.entity.Problem;
+import kr.haedal.ondal.problem.entity.Tag;
+import kr.haedal.ondal.problem.repository.ProblemRepository;
+import kr.haedal.ondal.problem.repository.TagRepository;
 import kr.haedal.ondal.judge.service.JudgeAggregator;
 import kr.haedal.ondal.submission.repository.SubmissionRepository;
 import kr.haedal.ondal.user.entity.User;
@@ -75,6 +79,8 @@ public class LocalDataSeeder implements CommandLineRunner {
     private final TestCaseRepository testCaseRepository;
     private final JudgeResultRepository judgeResultRepository;
     private final JudgeAggregator judgeAggregator;
+    private final ProblemRepository problemRepository;
+    private final TagRepository tagRepository;
 
     public LocalDataSeeder(UserRepository userRepository,
                            UserService userService,
@@ -89,7 +95,9 @@ public class LocalDataSeeder implements CommandLineRunner {
                            AnswerRepository answerRepository,
                            TestCaseRepository testCaseRepository,
                            JudgeResultRepository judgeResultRepository,
-                           JudgeAggregator judgeAggregator) {
+                           JudgeAggregator judgeAggregator,
+                           ProblemRepository problemRepository,
+                           TagRepository tagRepository) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.cohortRepository = cohortRepository;
@@ -104,6 +112,8 @@ public class LocalDataSeeder implements CommandLineRunner {
         this.testCaseRepository = testCaseRepository;
         this.judgeResultRepository = judgeResultRepository;
         this.judgeAggregator = judgeAggregator;
+        this.problemRepository = problemRepository;
+        this.tagRepository = tagRepository;
     }
 
     @Override
@@ -128,18 +138,26 @@ public class LocalDataSeeder implements CommandLineRunner {
         enroll(past, "student1", EnrollmentRole.STUDENT);
 
         Instant now = Instant.now();
-        Assignment session1 = assignmentRepository.save(Assignment.create(current, 1000, 1, "1차시 - 입출력 연습",
-                "두 정수 A와 B를 한 줄에 공백으로 구분해 입력받아 A+B를 출력하는 프로그램을 작성해 제출하세요.",
-                now.minus(3, ChronoUnit.DAYS)));
-        Assignment session2 = assignmentRepository.save(Assignment.create(current, 1001, 2, "2차시 - 조건문과 반복문",
-                "정수 N을 입력받아 N단 구구단을 출력하는 문제와, 점수를 입력받아 등급(A~F)을 출력하는 문제를 풀어 제출하세요.",
-                now.plus(7, ChronoUnit.DAYS)));
-        assignmentRepository.save(Assignment.create(current, 1002, null, "설문 - 스터디 시간 조사",
-                "차시와 무관한 공지형 과제입니다. 설문 링크를 확인하세요.",
-                now.plus(14, ChronoUnit.DAYS)));
+        // V7: 문제를 먼저 만들고 분반에 배정한다. 태그도 같이 심어 HOJ 목록·필터를 바로 확인할 수 있게 한다
+        Tag implementation = tagRepository.save(Tag.create("구현"));
+        Tag arithmetic = tagRepository.save(Tag.create("사칙연산"));
+        tagRepository.save(Tag.create("다이나믹 프로그래밍"));
+
+        Problem sum = problemRepository.save(Problem.create(1000, "두 수의 합",
+                "두 정수 A와 B를 한 줄에 공백으로 구분해 입력받아 A+B를 출력하는 프로그램을 작성해 제출하세요.", null, null, null));
+        sum.replaceTags(List.of(implementation, arithmetic));
+        Problem loops = problemRepository.save(Problem.create(1001, "조건문과 반복문",
+                "정수 N을 입력받아 N단 구구단을 출력하는 문제와, 점수를 입력받아 등급(A~F)을 출력하는 문제를 풀어 제출하세요.", null, null, null));
+        loops.replaceTags(List.of(implementation));
+        Problem survey = problemRepository.save(Problem.create(1002, "설문 - 스터디 시간 조사",
+                "차시와 무관한 공지형 과제입니다. 설문 링크를 확인하세요.", null, null, null));
+
+        Assignment session1 = assignmentRepository.save(Assignment.create(current, sum, 1, now.minus(3, ChronoUnit.DAYS)));
+        Assignment session2 = assignmentRepository.save(Assignment.create(current, loops, 2, now.plus(7, ChronoUnit.DAYS)));
+        assignmentRepository.save(Assignment.create(current, survey, null, now.plus(14, ChronoUnit.DAYS)));
 
         seedSubmissions(session1, session2, now);
-        seedJudge(session1);
+        seedJudge(session1, sum);
         seedQuestions(current);
         seedNotices(current);
         seedAttendance(current);
@@ -179,10 +197,10 @@ public class LocalDataSeeder implements CommandLineRunner {
      * 자동 채점 샘플 - 1차시(A+B)에 테스트케이스 3개(첫 번째 공개) + 코드 제출의 결과를 엔진 호출 없이 직접 저장:
      * 가장 먼저 낸 제출(student1) ACCEPTED 3/3, 나머지 코드 제출 WRONG_ANSWER 2/3. FE 가 판정 배지·결과 상세·현황판 판정 열을 바로 확인 (FE mock 동일)
      */
-    private void seedJudge(Assignment session1) {
-        testCaseRepository.save(TestCase.create(session1, 0, "1 2\n", "3\n", true));
-        testCaseRepository.save(TestCase.create(session1, 1, "10 20\n", "30\n", false));
-        testCaseRepository.save(TestCase.create(session1, 2, "-5 5\n", "0\n", false));
+    private void seedJudge(Assignment session1, Problem problem) {
+        testCaseRepository.save(TestCase.create(problem, 0, "1 2\n", "3\n", true));
+        testCaseRepository.save(TestCase.create(problem, 1, "10 20\n", "30\n", false));
+        testCaseRepository.save(TestCase.create(problem, 2, "-5 5\n", "0\n", false));
         List<Submission> codes = submissionRepository.findAllByAssignmentIdAndType(session1.getId(), SubmissionType.CODE).stream()
                 .sorted(Comparator.comparing(Submission::getId))
                 .toList();
@@ -192,7 +210,7 @@ public class LocalDataSeeder implements CommandLineRunner {
                     new JudgeCaseResult(0, Verdict.ACCEPTED, 2, 1536, "3\n", false),
                     new JudgeCaseResult(1, Verdict.ACCEPTED, 2, 1536, "30\n", false),
                     new JudgeCaseResult(2, accepted ? Verdict.ACCEPTED : Verdict.WRONG_ANSWER, 3, 1600, accepted ? "0\n" : "10\n", false));
-            JudgeResult result = JudgeResult.pending(codes.get(i).getId(), session1.getId());
+            JudgeResult result = JudgeResult.pending(codes.get(i).getId(), problem.getId());
             result.markRunning();
             result.complete(accepted ? Verdict.ACCEPTED : Verdict.WRONG_ANSWER, accepted ? 3 : 2, 3, 3, 1600, null, judgeAggregator.toJson(cases));
             judgeResultRepository.save(result);

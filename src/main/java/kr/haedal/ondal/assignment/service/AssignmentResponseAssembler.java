@@ -6,6 +6,9 @@ import kr.haedal.ondal.enrollment.entity.Enrollment;
 import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
 import kr.haedal.ondal.enrollment.repository.EnrollmentRepository;
 import kr.haedal.ondal.judge.repository.TestCaseRepository;
+import kr.haedal.ondal.problem.dto.TagResponse;
+import kr.haedal.ondal.problem.entity.Problem;
+import kr.haedal.ondal.problem.entity.Tag;
 import kr.haedal.ondal.submission.dto.AssignmentSubmissionCount;
 import kr.haedal.ondal.submission.dto.SubmissionMoment;
 import kr.haedal.ondal.submission.entity.SubmissionStatus;
@@ -14,6 +17,7 @@ import kr.haedal.ondal.user.entity.User;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -69,16 +73,26 @@ public class AssignmentResponseAssembler {
                         .collect(Collectors.toMap(AssignmentSubmissionCount::assignmentId, AssignmentSubmissionCount::count))
                 : Map.of();
 
-        // judgeEnabled: 케이스가 있는 과제 id 만 쿼리 1번 (judge/design.md 결정 1)
-        Set<Long> judged = new HashSet<>(testCaseRepository.findAssignmentIdsWithCases(assignmentIds));
+        // judgeEnabled: 케이스가 있는 문제 id 만 쿼리 1번 (judge/design.md 결정 1). V7 이후 케이스는 문제의 것이다
+        List<Long> problemIds = assignments.stream().map(a -> a.getProblem().getId()).distinct().toList();
+        Set<Long> judged = new HashSet<>(testCaseRepository.findProblemIdsWithCases(problemIds));
 
         return assignments.stream()
                 .map(assignment -> AssignmentResponse.of(
                         assignment,
+                        tagsOf(assignment.getProblem()),
                         myRole == null ? null : SubmissionStatus.from(
                                 mySubmittedAts.getOrDefault(assignment.getId(), List.of()), assignment.getDueAt()),
                         canSeeCount ? counts.getOrDefault(assignment.getId(), 0L).intValue() : null,
-                        judged.contains(assignment.getId())))
+                        judged.contains(assignment.getProblem().getId())))
+                .toList();
+    }
+
+    /** 문제의 태그 - 이름순. 과제 목록에서 배지로 쓴다 */
+    private static List<TagResponse> tagsOf(Problem problem) {
+        return problem.getTags().stream()
+                .sorted(Comparator.comparing(Tag::getName))
+                .map(TagResponse::of)
                 .toList();
     }
 }

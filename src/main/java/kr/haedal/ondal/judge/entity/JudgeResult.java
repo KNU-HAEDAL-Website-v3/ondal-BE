@@ -19,7 +19,7 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "judge_results", indexes = {
-        @Index(name = "idx_judge_results_assignment", columnList = "assignment_id"),
+        @Index(name = "idx_judge_results_problem", columnList = "problem_id"),
         @Index(name = "idx_judge_results_status", columnList = "status")
 })
 public class JudgeResult {
@@ -32,8 +32,9 @@ public class JudgeResult {
     @Column(name = "submission_id")
     private Long submissionId;
 
-    @Column(name = "assignment_id", nullable = false)
-    private Long assignmentId;
+    /** 채점 기준의 출처 - 테스트케이스·실행 제한은 문제(Problem)의 것이다 (V7). 과제 제출이든 HOJ 연습 제출이든 같다 */
+    @Column(name = "problem_id", nullable = false)
+    private Long problemId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -75,16 +76,16 @@ public class JudgeResult {
     protected JudgeResult() {
     }
 
-    private JudgeResult(Long submissionId, Long assignmentId) {
+    private JudgeResult(Long submissionId, Long problemId) {
         this.submissionId = submissionId;
-        this.assignmentId = assignmentId;
+        this.problemId = problemId;
         this.status = JudgeStatus.PENDING;
         this.createdAt = Instant.now();
     }
 
     /** 새 제출의 채점 대기 행 */
-    public static JudgeResult pending(Long submissionId, Long assignmentId) {
-        return new JudgeResult(submissionId, assignmentId);
+    public static JudgeResult pending(Long submissionId, Long problemId) {
+        return new JudgeResult(submissionId, problemId);
     }
 
     /** 재채점 - 판정을 비우고 다시 대기로. 화면은 그동안 "채점 중" */
@@ -147,7 +148,7 @@ public class JudgeResult {
     }
 
     public Long getSubmissionId() { return submissionId; }
-    public Long getAssignmentId() { return assignmentId; }
+    public Long getProblemId() { return problemId; }
     public JudgeStatus getStatus() { return status; }
     public Verdict getVerdict() { return verdict; }
     public int getPassedCases() { return passedCases; }

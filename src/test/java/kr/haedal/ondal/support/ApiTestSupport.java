@@ -84,6 +84,36 @@ public abstract class ApiTestSupport {
         return login.memberUser(loginId);
     }
 
+    /**
+     * 문제 라이브러리에 문제를 하나 만든다 (V7).
+     * 과제는 "문제를 분반에 배정한 것"이라 등록이 두 단계가 됐다 - 테스트 픽스처도 문제 -> 배정 순서를 그대로 따른다.
+     */
+    protected long createProblem(String title) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/problems")
+                        .session(login.admin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("title", title, "description", title + " 설명"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return readJson(result).get("id").asLong();
+    }
+
+    /** 새 문제를 만들어 분반에 배정한다 - 과제 id 를 돌려준다 */
+    protected long createAssignmentOf(long cohortId, String title, Integer sessionNo, java.time.Instant dueAt) throws Exception {
+        long problemId = createProblem(title);
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("problemId", problemId);
+        body.put("sessionNo", sessionNo);
+        body.put("dueAt", dueAt.toString());
+        MvcResult result = mockMvc.perform(post("/api/cohorts/{id}/assignments", cohortId)
+                        .session(login.admin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(body)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return readJson(result).get("id").asLong();
+    }
+
     /** 관리자 API 로 보관 처리 */
     protected void archiveCohort(long cohortId) throws Exception {
         mockMvc.perform(post("/api/cohorts/{id}/archive", cohortId).session(login.admin()))

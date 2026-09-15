@@ -1,6 +1,5 @@
 package kr.haedal.ondal.judge.service;
 
-import kr.haedal.ondal.assignment.entity.Assignment;
 import kr.haedal.ondal.judge.config.JudgeConfig;
 import kr.haedal.ondal.judge.engine.JudgeEngine;
 import kr.haedal.ondal.judge.engine.JudgeEngineException;
@@ -10,6 +9,7 @@ import kr.haedal.ondal.judge.engine.RunRequest;
 import kr.haedal.ondal.judge.entity.JudgeResult;
 import kr.haedal.ondal.judge.entity.JudgeStatus;
 import kr.haedal.ondal.judge.entity.TestCase;
+import kr.haedal.ondal.problem.entity.Problem;
 import kr.haedal.ondal.judge.repository.JudgeResultRepository;
 import kr.haedal.ondal.judge.repository.TestCaseRepository;
 import kr.haedal.ondal.submission.entity.Submission;
@@ -146,15 +146,16 @@ public class JudgeWorker {
         }
     }
 
-    /** 제출·과제·케이스를 한 트랜잭션에서 읽어 엔진 요청으로 - 지연 로딩을 여기서 끝낸다 */
+    /** 제출·문제·케이스를 한 트랜잭션에서 읽어 엔진 요청으로 - 지연 로딩을 여기서 끝낸다 */
     private Work loadWork(Long submissionId) {
         Optional<Submission> found = submissionRepository.findById(submissionId);
         if (found.isEmpty()) {
             return null;   // 과제 삭제 연쇄로 사라짐 - 결과 행도 함께 지워졌다
         }
         Submission submission = found.get();
-        Assignment assignment = submission.getAssignment();
-        List<TestCase> testCases = testCaseRepository.findAllByAssignmentIdOrderByPositionAsc(assignment.getId());
+        // 채점 기준은 문제의 것 - 과제 제출이면 배정된 문제, HOJ 연습 제출이면 푼 문제 (V7)
+        Problem problem = submission.targetProblem();
+        List<TestCase> testCases = testCaseRepository.findAllByProblemIdOrderByPositionAsc(problem.getId());
         if (testCases.isEmpty()) {
             return Work.failure("테스트케이스가 없어 채점하지 않았습니다. 운영진이 케이스를 저장한 뒤 재채점하세요.");
         }
@@ -163,8 +164,8 @@ public class JudgeWorker {
         }
         RunRequest request = new RunRequest(submission.getLanguage(), submission.getCodeText(),
                 testCases.stream().map(TestCase::getInput).toList(),
-                properties.effectiveTimeLimitMs(assignment.getTimeLimitMs()),
-                properties.effectiveMemoryLimitMb(assignment.getMemoryLimitMb()));
+                properties.effectiveTimeLimitMs(problem.getTimeLimitMs()),
+                properties.effectiveMemoryLimitMb(problem.getMemoryLimitMb()));
         return new Work(request, testCases, null);
     }
 

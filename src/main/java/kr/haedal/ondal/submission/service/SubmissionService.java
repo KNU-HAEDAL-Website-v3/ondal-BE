@@ -85,7 +85,8 @@ public class SubmissionService {
                 : request.linkUrls().stream().map(url -> url == null ? "" : url.trim()).toList();
         boolean hasFile = file != null && !file.isEmpty();
         validate(type, codeText, language, linkUrls, hasFile, file);
-        judgeService.validateSubmittable(assignment, type, language);   // 자동 채점 문제의 CODE 는 지원 언어만 (judge/design.md 결정 7)
+        // 자동 채점 문제의 CODE 는 지원 언어만 (judge/design.md 결정 7). 기준은 배정된 문제의 것 (V7)
+        judgeService.validateSubmittable(assignment.getProblem(), type, language);
 
         // 순서: 검증 → 디스크 저장 → DB insert. DB가 실패하면 방금 저장한 파일을 지워 고아 파일을 막는다
         String storedPath = type == SubmissionType.FILE ? fileStorage.store(file) : null;
