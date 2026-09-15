@@ -1,6 +1,7 @@
 package kr.haedal.ondal.enrollment.repository;
 
 import kr.haedal.ondal.enrollment.entity.Enrollment;
+import kr.haedal.ondal.enrollment.entity.EnrollmentRole;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 
     /** 권한 판정용 - 연관은 안 건드리고 role만 본다 */
     Optional<Enrollment> findByCohortIdAndUserId(Long cohortId, Long userId);
+
+    /** 문제 라이브러리 권한(@OperatorAnywhere) 판정용 - 어느 분반에서든 이 역할인 소속이 있는가 */
+    boolean existsByUserIdAndRole(Long userId, EnrollmentRole role);
 
     /** 내 분반 목록 - cohort를 fetch join 해서 트랜잭션 안에서 LAZY를 끝낸다 */
     @Query("select e from Enrollment e join fetch e.cohort where e.user.id = :userId")

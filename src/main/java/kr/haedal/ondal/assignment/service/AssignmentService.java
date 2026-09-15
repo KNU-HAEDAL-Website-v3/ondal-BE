@@ -8,9 +8,10 @@ import kr.haedal.ondal.assignment.dto.AssignmentResponse;
 import kr.haedal.ondal.assignment.dto.AssignmentUpdateRequest;
 import kr.haedal.ondal.cohort.entity.Cohort;
 import kr.haedal.ondal.cohort.repository.CohortRepository;
-import kr.haedal.ondal.common.error.ConflictException;
 import kr.haedal.ondal.common.error.NotFoundException;
 import kr.haedal.ondal.judge.service.JudgeService;
+import kr.haedal.ondal.problem.entity.Problem;
+import kr.haedal.ondal.problem.service.ProblemService;
 import kr.haedal.ondal.submission.service.SubmissionService;
 import kr.haedal.ondal.user.entity.User;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,8 @@ import java.util.List;
  * - 쓰기는 첫 줄에서 cohort.ensureActive() - 보관 분반이면 409
  * - 응답 조립은 AssignmentResponseAssembler - myStatus·submissionCount가 요청자 의존이라 viewer를 받는다
  * - 삭제는 연쇄: 파일 → submissions(SubmissionService.deleteAllOf) → assignment. FK(RESTRICT)가 순서 누락의 안전망
+ * - V7 이후 과제는 "문제를 분반에 배정한 것" - 제목·본문·번호·테스트케이스는 Problem 소관이라 여기서 다루지 않는다.
+ *   문제 삭제는 배정이 남아 있으면 409 로 막히므로, 과제를 지우기 전에는 문제도 사라지지 않는다.
  */
 @Service
 @Transactional
@@ -34,17 +37,20 @@ public class AssignmentService {
     private final AssignmentResponseAssembler assembler;
     private final SubmissionService submissionService;
     private final JudgeService judgeService;
+    private final ProblemService problemService;
 
     public AssignmentService(AssignmentRepository assignmentRepository,
                              CohortRepository cohortRepository,
                              AssignmentResponseAssembler assembler,
                              SubmissionService submissionService,
-                             JudgeService judgeService) {
+                             JudgeService judgeService,
+                             ProblemService problemService) {
         this.assignmentRepository = assignmentRepository;
         this.cohortRepository = cohortRepository;
         this.assembler = assembler;
         this.submissionService = submissionService;
         this.judgeService = judgeService;
+        this.problemService = problemService;
     }
 
     /** 목록 - 차시 오름차순(차시 없음 마지막) → 등록순. 보관 분반도 열람은 유지된다 */
@@ -52,7 +58,7 @@ public class AssignmentService {
     public List<AssignmentResponse> findAll(Long cohortId, User viewer) {
         requireCohort(cohortId);
         return assembler.toResponses(
-                assignmentRepository.findAllByCohortIdOrderBySessionNoAscCreatedAtAsc(cohortId), cohortId, viewer);
+                assignmentRepository.findAllByCohortIdWithProblem(cohortId), cohortId, viewer);
     }
 
     @Transactional(readOnly = true)
@@ -63,17 +69,17 @@ public class AssignmentService {
     public AssignmentResponse create(Long cohortId, AssignmentCreateRequest request, User viewer) {
         Cohort cohort = requireCohort(cohortId);
         cohort.ensureActive();
-        Integer problemNo = resolveProblemNoForCreate(request.problemNo());
-        Assignment assignment = assignmentRepository.save(Assignment.create(
-                cohort, problemNo, request.sessionNo(), request.title(), request.description(), request.dueAt()));
+        Problem problem = problemService.requireProblem(request.problemId());
+        Assignment assignment = assignmentRepository.save(
+                Assignment.create(cohort, problem, request.sessionNo(), request.dueAt()));
         return assembler.toResponse(assignment, cohortId, viewer);
     }
 
     public AssignmentResponse update(Long cohortId, Long assignmentId, AssignmentUpdateRequest request, User viewer) {
         requireCohort(cohortId).ensureActive();
         Assignment assignment = requireAssignment(cohortId, assignmentId);
-        Integer problemNo = resolveProblemNoForUpdate(request.problemNo(), assignment);
-        assignment.update(problemNo, request.sessionNo(), request.title(), request.description(), request.dueAt());
+        Problem problem = problemService.requireProblem(request.problemId());
+        assignment.update(problem, request.sessionNo(), request.dueAt());
         return assembler.toResponse(assignment, cohortId, viewer);
     }
 
@@ -84,28 +90,6 @@ public class AssignmentService {
         judgeService.deleteAllOf(assignment.getId());        // judge_results(제출 FK) → test_cases: 제출보다 먼저 (judge/design.md 결정 16)
         submissionService.deleteAllOf(assignment.getId());
         assignmentRepository.delete(assignment);
-    }
-
-    /** 등록: 비우면 자동 채번(최대+1, 1000 시작), 지정하면 중복 검사 (schema.md 결정 9). 동시 충돌은 unique 제약이 최후 방어 */
-    private Integer resolveProblemNoForCreate(Integer requested) {
-        if (requested == null) {
-            return assignmentRepository.findMaxProblemNo().map(max -> max + 1).orElse(1000);
-        }
-        if (assignmentRepository.existsByProblemNo(requested)) {
-            throw new ConflictException("이미 사용 중인 문제 번호입니다: " + requested);
-        }
-        return requested;
-    }
-
-    /** 수정: 비우면 기존 번호 유지 - 번호가 이미 있는 리소스라 "비움 = 새로 받기"가 아니다 (전체 교체 규칙의 명세 예외) */
-    private Integer resolveProblemNoForUpdate(Integer requested, Assignment assignment) {
-        if (requested == null) {
-            return assignment.getProblemNo();
-        }
-        if (assignmentRepository.existsByProblemNoAndIdNot(requested, assignment.getId())) {
-            throw new ConflictException("이미 사용 중인 문제 번호입니다: " + requested);
-        }
-        return requested;
     }
 
     private Cohort requireCohort(Long cohortId) {

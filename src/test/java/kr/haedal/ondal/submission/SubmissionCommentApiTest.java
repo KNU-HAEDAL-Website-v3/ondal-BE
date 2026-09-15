@@ -29,14 +29,9 @@ class SubmissionCommentApiTest extends ApiTestSupport {
 
     // ---- 슬라이스 고유 픽스처 ------------------------------------------------------------
 
+    /** V7: 문제를 만들어 분반에 배정한다 (공용 픽스처) */
     private long createAssignment(long cohortId) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/cohorts/{id}/assignments", cohortId)
-                        .session(login.admin())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("title", "과제", "description", "설명", "dueAt", FUTURE_DUE.toString()))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return readJson(result).get("id").asLong();
+        return createAssignmentOf(cohortId, "과제", null, FUTURE_DUE);
     }
 
     private long submitCode(long cohortId, long assignmentId, MockHttpSession session) throws Exception {

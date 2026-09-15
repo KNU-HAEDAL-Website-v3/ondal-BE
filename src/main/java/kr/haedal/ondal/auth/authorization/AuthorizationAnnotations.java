@@ -19,7 +19,8 @@ import java.util.stream.Stream;
  */
 final class AuthorizationAnnotations {
 
-    static final List<Class<? extends Annotation>> TYPES = List.of(LoginOnly.class, AdminOnly.class, CohortRole.class);
+    static final List<Class<? extends Annotation>> TYPES =
+            List.of(LoginOnly.class, AdminOnly.class, OperatorAnywhere.class, CohortRole.class);
 
     private AuthorizationAnnotations() {
     }
@@ -35,7 +36,7 @@ final class AuthorizationAnnotations {
             return single(onClass, "클래스 " + handlerMethod.getBeanType().getSimpleName());
         }
         throw new IllegalStateException("권한 어노테이션이 없는 API: " + handlerMethod
-                + " - @LoginOnly / @AdminOnly / @CohortRole 중 하나를 붙여야 한다.");
+                + " - @LoginOnly / @AdminOnly / @OperatorAnywhere / @CohortRole 중 하나를 붙여야 한다.");
     }
 
     /** 검증기용 - 예외 대신 문제 설명을 돌려준다 (null 이면 정상) */
@@ -49,7 +50,7 @@ final class AuthorizationAnnotations {
             return "클래스에 권한 어노테이션이 둘 이상 (" + names(onClass) + ")";
         }
         if (onMethod.isEmpty() && onClass.isEmpty()) {
-            return "권한 어노테이션 없음 (@LoginOnly / @AdminOnly / @CohortRole 중 하나 필요)";
+            return "권한 어노테이션 없음 (@LoginOnly / @AdminOnly / @OperatorAnywhere / @CohortRole 중 하나 필요)";
         }
         return null;
     }

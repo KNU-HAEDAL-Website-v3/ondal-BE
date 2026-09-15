@@ -41,6 +41,14 @@ public class CohortAuthorizer {
     }
 
     /**
+     * 분반에 매이지 않는 운영 기능(문제 라이브러리 출제)의 통과 조건 - ADMIN 이거나 어느 반에서든 운영진.
+     * 문제는 분반에 속하지 않아 경로에 {cohortId} 가 없으므로 isAllowed 로는 판정할 수 없다.
+     */
+    public boolean isOperatorAnywhere(User user) {
+        return user.isAdmin() || enrollmentRepository.existsByUserIdAndRole(user.getId(), EnrollmentRole.OPERATOR);
+    }
+
+    /**
      * 프론트의 "운영 기능 진입 버튼" 판정값. 보관된 분반은 누구도 운영할 수 없으므로 false.
      * (ADMIN이 보관 분반을 손보려면 restore 먼저 - 그 버튼은 관리자 화면 소관, globalRole로 판단)
      */

@@ -16,6 +16,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import kr.haedal.ondal.assignment.entity.Assignment;
+import kr.haedal.ondal.problem.entity.Problem;
 import kr.haedal.ondal.user.entity.User;
 
 import java.time.Instant;
@@ -28,10 +29,16 @@ import java.util.List;
  * 상태(미제출/제출/제출(추가)/지각)는 저장하지 않고 이력과 dueAt으로 계산한다 (SubmissionStatus).
  *
  * user를 Enrollment이 아니라 직접 참조하는 이유: 소속이 해제돼도 제출물은 남는다 (docs/db/schema.md).
+ *
+ * 제출 대상은 둘 중 정확히 하나다 (V7, CLAUDE.md 원칙 1 - 파이프라인은 하나):
+ *   - assignment: 분반 과제에 낸 제출 - 마감·지각·코멘트가 있다
+ *   - problem:    HOJ 에서 문제를 연습으로 푼 제출 - 마감도 코멘트도 없고 코드만 받는다
+ * DB 의 chk_submissions_target 제약이 "정확히 하나"를 강제한다.
  */
 @Entity
 @Table(name = "submissions", indexes = {
         @Index(name = "idx_submissions_assignment_user", columnList = "assignment_id, user_id, submitted_at"),
+        @Index(name = "idx_submissions_problem_user", columnList = "problem_id, user_id, submitted_at"),
         @Index(name = "idx_submissions_user", columnList = "user_id")
 })
 public class Submission {
@@ -40,9 +47,15 @@ public class Submission {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "assignment_id", nullable = false)
+    /** 분반 과제 제출이면 값, HOJ 연습 제출이면 null */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignment_id")
     private Assignment assignment;
+
+    /** HOJ 연습 제출이면 값, 분반 과제 제출이면 null (과제 제출의 문제는 assignment.problem 으로 간다) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "problem_id")
+    private Problem problem;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
@@ -99,9 +112,10 @@ public class Submission {
         // JPA 스펙이 요구하는 기본 생성자
     }
 
-    private Submission(Assignment assignment, User user, SubmissionType type, String codeText, String language,
+    private Submission(Assignment assignment, Problem problem, User user, SubmissionType type, String codeText, String language,
                        String fileName, String storedPath, Long fileSize, Instant submittedAt) {
         this.assignment = assignment;
+        this.problem = problem;
         this.user = user;
         this.type = type;
         this.codeText = codeText;
@@ -116,19 +130,24 @@ public class Submission {
     public static Submission create(Assignment assignment, User user, SubmissionType type, String codeText,
                                     String language, String fileName, String storedPath, Long fileSize,
                                     List<String> linkUrls) {
-        return build(assignment, user, type, codeText, language, fileName, storedPath, fileSize, linkUrls, Instant.now());
+        return build(assignment, null, user, type, codeText, language, fileName, storedPath, fileSize, linkUrls, Instant.now());
+    }
+
+    /** HOJ 연습 제출 - 코드만 받는다(마감·코멘트 없음). 채점은 과제 제출과 같은 파이프라인을 탄다 */
+    public static Submission practice(Problem problem, User user, String codeText, String language) {
+        return build(null, problem, user, SubmissionType.CODE, codeText, language, null, null, null, null, Instant.now());
     }
 
     /** 제출 시각을 지정하는 버전 - 시더가 과거 제출을 재현할 때만. 서비스 코드에서 호출 금지 */
     public static Submission createAt(Assignment assignment, User user, SubmissionType type, String codeText,
                                       String language, List<String> linkUrls, Instant submittedAt) {
-        return build(assignment, user, type, codeText, language, null, null, null, linkUrls, submittedAt);
+        return build(assignment, null, user, type, codeText, language, null, null, null, linkUrls, submittedAt);
     }
 
-    private static Submission build(Assignment assignment, User user, SubmissionType type, String codeText,
+    private static Submission build(Assignment assignment, Problem problem, User user, SubmissionType type, String codeText,
                                     String language, String fileName, String storedPath, Long fileSize,
                                     List<String> linkUrls, Instant submittedAt) {
-        Submission submission = new Submission(assignment, user, type, codeText, language, fileName, storedPath, fileSize, submittedAt);
+        Submission submission = new Submission(assignment, problem, user, type, codeText, language, fileName, storedPath, fileSize, submittedAt);
         if (linkUrls != null) {
             for (int i = 0; i < linkUrls.size(); i++) {
                 submission.links.add(SubmissionLink.of(submission, linkUrls.get(i), i + 1));
@@ -151,6 +170,19 @@ public class Submission {
         this.commentedAt = null;
     }
 
+    /** HOJ 연습 제출인가 - 마감·지각·코멘트·현황판에서 모두 빠진다 */
+    public boolean isPractice() {
+        return problem != null;
+    }
+
+    /**
+     * 채점 기준이 되는 문제 - 과제 제출이면 배정된 문제, 연습 제출이면 푼 문제.
+     * 지연 로딩 대상이라 트랜잭션 안에서 부른다.
+     */
+    public Problem targetProblem() {
+        return assignment != null ? assignment.getProblem() : problem;
+    }
+
     public boolean hasComment() {
         return mentorComment != null;
     }
@@ -166,6 +198,7 @@ public class Submission {
 
     public Long getId() { return id; }
     public Assignment getAssignment() { return assignment; }
+    public Problem getProblem() { return problem; }
     public User getUser() { return user; }
     public SubmissionType getType() { return type; }
     public String getCodeText() { return codeText; }

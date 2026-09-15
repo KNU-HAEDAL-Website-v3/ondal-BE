@@ -26,6 +26,7 @@ import java.util.Map;
  * 핸들러의 "유효 어노테이션" 하나를 고른다 (AuthorizationAnnotations.resolve - 메서드에 있으면 그것, 없으면 클래스 것):
  *   @LoginOnly  → 통과
  *   @AdminOnly  → 전역 ADMIN 아니면 403
+ *   @OperatorAnywhere → 전역 ADMIN 이거나 어느 분반에서든 운영진이 아니면 403 (분반 없는 리소스 - 문제 라이브러리)
  *   @CohortRole → 경로 {cohortId} 분반에서 요구 역할 이상 아니면 403 (ADMIN은 통과)
  *   (없음)      → 500 - 붙이는 걸 잊은 것. 기동 시 검증에서 이미 막히지만 여기서도 fail-closed.
  *
@@ -67,6 +68,12 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
         }
         if (effective instanceof AdminOnly) {
             if (!user.isAdmin()) {
+                throw new ForbiddenException();
+            }
+            return true;
+        }
+        if (effective instanceof OperatorAnywhere) {
+            if (!cohortAuthorizer.isOperatorAnywhere(user)) {
                 throw new ForbiddenException();
             }
             return true;

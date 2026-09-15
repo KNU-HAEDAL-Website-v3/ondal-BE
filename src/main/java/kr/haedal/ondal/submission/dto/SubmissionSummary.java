@@ -48,4 +48,21 @@ public record SubmissionSummary(
                 judge == null ? null : judge.getVerdict()
         );
     }
+
+    /** HOJ 연습 제출 행 - 마감·코멘트가 없다 (V7) */
+    public static SubmissionSummary practice(Submission submission, JudgeResult judge) {
+        return new SubmissionSummary(
+                submission.getId(),
+                submission.getType(),
+                submission.getLanguage(),
+                null,
+                null,
+                List.of(),
+                submission.getSubmittedAt(),
+                false,
+                false,
+                judge == null ? null : judge.getStatus(),
+                judge == null ? null : judge.getVerdict()
+        );
+    }
 }

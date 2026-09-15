@@ -23,155 +23,34 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** 과제 API (AssignmentController #13~#17) */
+/**
+ * 과제 API (AssignmentController #13~#17).
+ *
+ * V7 이후 과제 = "문제를 분반에 배정한 것" - 제목·본문·문제 번호는 문제(Problem)의 것이라 여기서 검증하지 않는다.
+ * 문제 번호 채번·중복, 제목 검증은 ProblemApiTest 로 옮겼다.
+ */
 class AssignmentApiTest extends ApiTestSupport {
 
     private static final Instant FUTURE_DUE = Instant.now().plus(7, ChronoUnit.DAYS);
 
     // ---- 슬라이스 고유 픽스처 (support/는 PM 파일 - 여기 private 헬퍼로) ----------------------
 
-    private Map<String, Object> assignmentBody(Integer sessionNo, String title) {
+    /**
+     * 배정 요청 본문 - 제목은 문제의 것이므로 그 제목을 가진 문제를 새로 만들어 붙인다 (V7).
+     * "제목이 다른 과제"는 곧 "다른 문제를 배정한 것"이다.
+     */
+    private Map<String, Object> assignmentBody(Integer sessionNo, String title) throws Exception {
         Map<String, Object> body = new HashMap<>();
         if (sessionNo != null) {
             body.put("sessionNo", sessionNo);
         }
-        body.put("title", title);
-        body.put("description", title + " 설명");
+        body.put("problemId", createProblem(title));
         body.put("dueAt", FUTURE_DUE.toString());
         return body;
     }
 
     private long createAssignment(long cohortId, Integer sessionNo, String title) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/cohorts/{id}/assignments", cohortId)
-                        .session(login.admin())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(assignmentBody(sessionNo, title))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return readJson(result).get("id").asLong();
-    }
-
-    @Nested
-    @DisplayName("문제 번호 - 전역 유일, 1000부터 (schema.md 결정 9)")
-    class ProblemNo {
-
-        @Test
-        void 비우면_1000부터_자동_채번() throws Exception {
-            long id = createCohort("C언어", "op1");
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(assignmentBody(1, "첫 과제"))))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.problemNo").value(1000));
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(assignmentBody(2, "둘째 과제"))))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.problemNo").value(1001));
-        }
-
-        @Test
-        void 수동_지정하면_그_번호_이후_자동은_최대_더하기_1() throws Exception {
-            long id = createCohort("C언어", "op1");
-            Map<String, Object> manual = assignmentBody(1, "수동 번호 과제");
-            manual.put("problemNo", 2000);
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(manual)))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.problemNo").value(2000));
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(assignmentBody(2, "자동 번호 과제"))))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.problemNo").value(2001));
-        }
-
-        @Test
-        void 중복_지정은_다른_분반이어도_409() throws Exception {
-            long a = createCohort("A반", "op1");
-            long b = createCohort("B반", "op2");
-            Map<String, Object> manual = assignmentBody(1, "선점 과제");
-            manual.put("problemNo", 2000);
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", a)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(manual)))
-                    .andExpect(status().isCreated());
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", a)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(manual)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("CONFLICT"));
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", b)
-                            .session(login.member("op2"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(manual)))
-                    .andExpect(status().isConflict());
-        }
-
-        @Test
-        void 천_미만_지정은_400() throws Exception {
-            long id = createCohort("C언어", "op1");
-            Map<String, Object> manual = assignmentBody(1, "번호 오류 과제");
-            manual.put("problemNo", 999);
-            mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(manual)))
-                    .andExpect(status().isBadRequest());
-        }
-
-        @Test
-        void 수정에서_비우면_기존_번호_유지_지정하면_변경() throws Exception {
-            long id = createCohort("C언어", "op1");
-            long assignmentId = createAssignment(id, 1, "과제");
-
-            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, assignmentId)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(assignmentBody(1, "번호 없이 수정"))))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.problemNo").value(1000));
-
-            Map<String, Object> renumber = assignmentBody(1, "번호 바꿔 수정");
-            renumber.put("problemNo", 3000);
-            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, assignmentId)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(renumber)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.problemNo").value(3000));
-
-            // 자기 번호를 다시 보내는 것은 중복이 아니다
-            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, assignmentId)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(renumber)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.problemNo").value(3000));
-        }
-
-        @Test
-        void 수정으로_타_과제_번호_사용은_409() throws Exception {
-            long id = createCohort("C언어", "op1");
-            createAssignment(id, 1, "선점 과제"); // 1000
-            long second = createAssignment(id, 2, "충돌 과제"); // 1001
-
-            Map<String, Object> clash = assignmentBody(2, "충돌 시도");
-            clash.put("problemNo", 1000);
-            mockMvc.perform(put("/api/cohorts/{id}/assignments/{aid}", id, second)
-                            .session(login.member("op1"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(clash)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("CONFLICT"));
-        }
+        return createAssignmentOf(cohortId, title, sessionNo, FUTURE_DUE);
     }
 
     @Nested
@@ -303,18 +182,23 @@ class AssignmentApiTest extends ApiTestSupport {
         }
 
         @Test
-        void 제목_공백이나_200자_초과는_400() throws Exception {
+        void 배정할_문제를_비우면_400_없는_문제면_404() throws Exception {
             long id = createCohort("C언어", "op1");
+            Map<String, Object> noProblem = assignmentBody(1, "문제 없는 배정");
+            noProblem.remove("problemId");
             mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
                             .session(login.member("op1"))
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(assignmentBody(1, " "))))
+                            .content(json(noProblem)))
                     .andExpect(status().isBadRequest());
+
+            Map<String, Object> missing = assignmentBody(1, "없는 문제 배정");
+            missing.put("problemId", 999_999);
             mockMvc.perform(post("/api/cohorts/{id}/assignments", id)
                             .session(login.member("op1"))
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(assignmentBody(1, "가".repeat(201)))))
-                    .andExpect(status().isBadRequest());
+                            .content(json(missing)))
+                    .andExpect(status().isNotFound());
         }
 
         @Test

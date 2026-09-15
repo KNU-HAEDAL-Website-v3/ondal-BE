@@ -28,6 +28,8 @@ import kr.haedal.ondal.judge.entity.TestCase;
 import kr.haedal.ondal.judge.entity.Verdict;
 import kr.haedal.ondal.judge.repository.JudgeResultRepository;
 import kr.haedal.ondal.judge.repository.TestCaseRepository;
+import kr.haedal.ondal.problem.entity.Problem;
+import kr.haedal.ondal.problem.repository.ProblemRepository;
 import kr.haedal.ondal.submission.entity.Submission;
 import kr.haedal.ondal.submission.entity.SubmissionType;
 import kr.haedal.ondal.submission.repository.SubmissionRepository;
@@ -46,6 +48,9 @@ import java.util.stream.Collectors;
 
 /**
  * 자동 채점 - 채점 설정·테스트케이스(#47·#48·#50), 출제 도구 실행(#49), 재채점(#51), 제출 훅, 응답 조립, 삭제 연쇄 (docs judge/design.md).
+ *
+ * V7 이후 채점 기준(테스트케이스·실행 제한)은 문제(Problem)의 것이다 - 같은 문제를 여러 분반에 배정해도 기준은 하나다.
+ * 그래서 설정·예시·출제 도구는 문제 스코프(/api/problems/{problemId}/...)이고, 재채점만 과제 스코프로 남는다(운영진이 "내 반 것만" 다시 돌리는 동작).
  * 실제 채점(엔진 호출·집계 저장)은 JudgeWorker - 이 서비스는 PENDING 행을 만들고 커밋 후 이벤트를 발행할 뿐이다.
  * 메서드마다 @Transactional 을 따로 단다 - #49 는 엔진을 최대 30초 기다리므로 트랜잭션(DB 연결) 밖에서 돌아야 한다.
  */
@@ -58,6 +63,7 @@ public class JudgeService {
     private final JudgeResultRepository judgeResultRepository;
     private final SubmissionRepository submissionRepository;
     private final AssignmentRepository assignmentRepository;
+    private final ProblemRepository problemRepository;
     private final CohortRepository cohortRepository;
     private final JudgeEngine engine;
     private final JudgeProperties properties;
@@ -67,12 +73,14 @@ public class JudgeService {
 
     public JudgeService(TestCaseRepository testCaseRepository, JudgeResultRepository judgeResultRepository,
                         SubmissionRepository submissionRepository, AssignmentRepository assignmentRepository,
+                        ProblemRepository problemRepository,
                         CohortRepository cohortRepository, JudgeEngine engine, JudgeProperties properties,
                         JudgeAggregator aggregator, ApplicationEventPublisher events, PlatformTransactionManager transactionManager) {
         this.testCaseRepository = testCaseRepository;
         this.judgeResultRepository = judgeResultRepository;
         this.submissionRepository = submissionRepository;
         this.assignmentRepository = assignmentRepository;
+        this.problemRepository = problemRepository;
         this.cohortRepository = cohortRepository;
         this.engine = engine;
         this.properties = properties;
@@ -85,39 +93,41 @@ public class JudgeService {
     // ---- #47 #48 #50 설정 ----------------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public JudgeConfigResponse getConfig(Long cohortId, Long assignmentId) {
-        Assignment assignment = requireAssignment(cohortId, assignmentId);
-        return toConfigResponse(assignment, testCaseRepository.findAllByAssignmentIdOrderByPositionAsc(assignmentId), 0);
+    public JudgeConfigResponse getConfig(Long problemId) {
+        Problem problem = requireProblem(problemId);
+        return toConfigResponse(problem, testCaseRepository.findAllByProblemIdOrderByPositionAsc(problemId), 0);
     }
 
-    /** 통째 교체 - 기존 케이스 전부 삭제 후 순서대로 재삽입. rejudge=true 면 기존 코드 제출을 다시 큐에 (design.md 결정 9) */
+    /**
+     * 통째 교체 - 기존 케이스 전부 삭제 후 순서대로 재삽입. rejudge=true 면 이 문제로 채점되는 코드 제출을 다시 큐에 (design.md 결정 9).
+     * 재채점 대상이 "이 문제의 모든 제출"인 이유: 채점 기준이 바뀌면 그 기준으로 매겨진 판정은 배정이 어디든 전부 낡은 값이 된다.
+     */
     @Transactional
-    public JudgeConfigResponse saveConfig(Long cohortId, Long assignmentId, JudgeConfigRequest request) {
-        requireCohort(cohortId).ensureActive();
-        Assignment assignment = requireAssignment(cohortId, assignmentId);
+    public JudgeConfigResponse saveConfig(Long problemId, JudgeConfigRequest request) {
+        Problem problem = requireProblem(problemId);
         validateLimits(request.timeLimitMs(), request.memoryLimitMb());
         if (request.testCases().size() > properties.maxTestCases()) {
             throw new InvalidInputException("테스트케이스는 최대 " + properties.maxTestCases() + "개까지 저장할 수 있습니다.");
         }
-        assignment.updateJudgeLimits(request.timeLimitMs(), request.memoryLimitMb());
-        testCaseRepository.deleteAllByAssignmentId(assignmentId);
+        problem.updateJudgeLimits(request.timeLimitMs(), request.memoryLimitMb());
+        testCaseRepository.deleteAllByProblemId(problemId);
         List<TestCase> saved = new ArrayList<>();
         int position = 0;
         for (TestCaseRequest tc : request.testCases()) {
-            saved.add(testCaseRepository.save(TestCase.create(assignment, position++, tc.input(), tc.expectedOutput(), tc.publicFlag())));
+            saved.add(testCaseRepository.save(TestCase.create(problem, position++, tc.input(), tc.expectedOutput(), tc.publicFlag())));
         }
-        int queued = request.rejudge() && !saved.isEmpty() ? rejudgeAll(assignment) : 0;
-        return toConfigResponse(assignment, saved, queued);
+        int queued = request.rejudge() && !saved.isEmpty() ? rejudgeAllOfProblem(problem) : 0;
+        return toConfigResponse(problem, saved, queued);
     }
 
     @Transactional(readOnly = true)
-    public JudgeSamplesResponse samples(Long cohortId, Long assignmentId) {
-        Assignment assignment = requireAssignment(cohortId, assignmentId);
-        long total = testCaseRepository.countByAssignmentId(assignmentId);
-        List<TestCase> publics = testCaseRepository.findAllByAssignmentIdAndIsPublicTrueOrderByPositionAsc(assignmentId);
+    public JudgeSamplesResponse samples(Long problemId) {
+        Problem problem = requireProblem(problemId);
+        long total = testCaseRepository.countByProblemId(problemId);
+        List<TestCase> publics = testCaseRepository.findAllByProblemIdAndIsPublicTrueOrderByPositionAsc(problemId);
         return new JudgeSamplesResponse(total > 0,
-                properties.effectiveTimeLimitMs(assignment.getTimeLimitMs()),
-                properties.effectiveMemoryLimitMb(assignment.getMemoryLimitMb()),
+                properties.effectiveTimeLimitMs(problem.getTimeLimitMs()),
+                properties.effectiveMemoryLimitMb(problem.getMemoryLimitMb()),
                 languages(),
                 publics.stream().map(t -> new JudgeSamplesResponse.Sample(t.getPosition(), t.getInput(), t.getExpectedOutput())).toList());
     }
@@ -125,11 +135,8 @@ public class JudgeService {
     // ---- #49 출제 도구 -----------------------------------------------------------------------
 
     /** 저장 없이 실행 - DB 확인은 짧은 읽기 트랜잭션, 엔진 대기는 트랜잭션 밖 */
-    public JudgeRunResponse run(Long cohortId, Long assignmentId, JudgeRunRequest request) {
-        readOnlyTx.executeWithoutResult(tx -> {
-            requireCohort(cohortId).ensureActive();
-            requireAssignment(cohortId, assignmentId);
-        });
+    public JudgeRunResponse run(Long problemId, JudgeRunRequest request) {
+        readOnlyTx.executeWithoutResult(tx -> requireProblem(problemId));
         if (!properties.supportsLanguage(request.language())) {
             throw new InvalidInputException("이 언어는 자동 채점을 지원하지 않습니다: " + request.language() + " (지원: " + String.join(", ", languages()) + ")");
         }
@@ -180,22 +187,29 @@ public class JudgeService {
 
     // ---- #51 재채점 ---------------------------------------------------------------------------
 
+    /** 과제 단위 재채점 - "내 반 제출만 다시 돌린다". 같은 문제를 쓰는 다른 분반은 건드리지 않는다 */
     @Transactional
     public RejudgeResponse rejudge(Long cohortId, Long assignmentId) {
         requireCohort(cohortId).ensureActive();
         Assignment assignment = requireAssignment(cohortId, assignmentId);
-        if (testCaseRepository.countByAssignmentId(assignmentId) == 0) {
-            throw new ConflictException("테스트케이스가 없는 과제는 재채점할 수 없습니다.");
+        Long problemId = assignment.getProblem().getId();
+        if (testCaseRepository.countByProblemId(problemId) == 0) {
+            throw new ConflictException("테스트케이스가 없는 문제는 재채점할 수 없습니다.");
         }
-        return new RejudgeResponse(rejudgeAll(assignment));
+        return new RejudgeResponse(requeue(
+                submissionRepository.findAllByAssignmentIdAndType(assignment.getId(), SubmissionType.CODE), problemId));
     }
 
-    /** 이 과제의 코드 제출 전부를 PENDING 으로 되돌리고(없던 행은 새로) 커밋 후 채점 이벤트 */
-    private int rejudgeAll(Assignment assignment) {
-        List<Submission> codes = submissionRepository.findAllByAssignmentIdAndType(assignment.getId(), SubmissionType.CODE);
+    /** 채점 기준이 바뀌었을 때 - 이 문제로 채점되는 제출 전부(여러 분반의 과제 제출 + HOJ 연습 제출) */
+    private int rejudgeAllOfProblem(Problem problem) {
+        return requeue(submissionRepository.findAllTargetingProblem(problem.getId(), SubmissionType.CODE), problem.getId());
+    }
+
+    /** PENDING 으로 되돌리고(없던 행은 새로) 커밋 후 채점 이벤트 */
+    private int requeue(List<Submission> codes, Long problemId) {
         for (Submission submission : codes) {
             JudgeResult result = judgeResultRepository.findById(submission.getId())
-                    .orElseGet(() -> JudgeResult.pending(submission.getId(), assignment.getId()));
+                    .orElseGet(() -> JudgeResult.pending(submission.getId(), problemId));
             result.reset();
             judgeResultRepository.save(result);
             events.publishEvent(new SubmissionJudgeRequested(submission.getId()));
@@ -205,13 +219,13 @@ public class JudgeService {
 
     // ---- 제출(#18) 훅 - SubmissionService 의 트랜잭션 안에서 -------------------------------------------
 
-    /** 자동 채점 문제의 CODE 제출은 지원 언어여야 한다 → 400. 케이스 없는 과제·FILE·LINK 는 그대로 */
-    public void validateSubmittable(Assignment assignment, SubmissionType type, String language) {
-        if (type != SubmissionType.CODE || testCaseRepository.countByAssignmentId(assignment.getId()) == 0) {
+    /** 자동 채점 문제의 CODE 제출은 지원 언어여야 한다 → 400. 케이스 없는 문제·FILE·LINK 는 그대로 */
+    public void validateSubmittable(Problem problem, SubmissionType type, String language) {
+        if (type != SubmissionType.CODE || testCaseRepository.countByProblemId(problem.getId()) == 0) {
             return;
         }
         if (!properties.supportsLanguage(language)) {
-            throw new InvalidInputException("이 과제는 자동 채점 문제입니다. 지원 언어로 제출하세요: " + String.join(", ", languages()));
+            throw new InvalidInputException("이 문제는 자동 채점 문제입니다. 지원 언어로 제출하세요: " + String.join(", ", languages()));
         }
     }
 
@@ -220,11 +234,11 @@ public class JudgeService {
         if (submission.getType() != SubmissionType.CODE) {
             return null;
         }
-        Long assignmentId = submission.getAssignment().getId();
-        if (testCaseRepository.countByAssignmentId(assignmentId) == 0) {
+        Long problemId = submission.targetProblem().getId();
+        if (testCaseRepository.countByProblemId(problemId) == 0) {
             return null;
         }
-        JudgeResult result = judgeResultRepository.save(JudgeResult.pending(submission.getId(), assignmentId));
+        JudgeResult result = judgeResultRepository.save(JudgeResult.pending(submission.getId(), problemId));
         events.publishEvent(new SubmissionJudgeRequested(submission.getId()));
         return result;
     }
@@ -245,7 +259,7 @@ public class JudgeService {
 
     /** 공개 케이스만 입력·기대 출력·실제 출력을 싣는다 - 운영진에게도 같은 규칙(비공개 입력은 #47) */
     public JudgeResultResponse toResultResponse(JudgeResult result) {
-        Map<Integer, TestCase> byPosition = testCaseRepository.findAllByAssignmentIdOrderByPositionAsc(result.getAssignmentId()).stream()
+        Map<Integer, TestCase> byPosition = testCaseRepository.findAllByProblemIdOrderByPositionAsc(result.getProblemId()).stream()
                 .collect(Collectors.toMap(TestCase::getPosition, Function.identity()));
         List<JudgeResultResponse.Case> cases = aggregator.fromJson(result.getCaseResults()).stream()
                 .map(c -> toCaseView(c, byPosition.get(c.position())))
@@ -265,18 +279,21 @@ public class JudgeService {
 
     // ---- 삭제 연쇄 - AssignmentService.delete 가 제출 삭제 전에 부른다 --------------------------------
 
+    /**
+     * 과제 삭제 연쇄 - 그 과제의 제출에 달린 채점 결과만 지운다.
+     * 테스트케이스는 문제의 것이므로 건드리지 않는다 - 같은 문제를 쓰는 다른 분반의 채점 기준이 사라지면 안 된다.
+     */
     public void deleteAllOf(Long assignmentId) {
         judgeResultRepository.deleteAllByAssignmentId(assignmentId);
-        testCaseRepository.deleteAllByAssignmentId(assignmentId);
     }
 
     // ---- 내부 ---------------------------------------------------------------------------------
 
-    private JudgeConfigResponse toConfigResponse(Assignment assignment, List<TestCase> cases, int queued) {
-        int affected = (int) submissionRepository.countByAssignmentIdAndType(assignment.getId(), SubmissionType.CODE);
+    private JudgeConfigResponse toConfigResponse(Problem problem, List<TestCase> cases, int queued) {
+        int affected = (int) submissionRepository.countTargetingProblem(problem.getId(), SubmissionType.CODE);
         return new JudgeConfigResponse(!cases.isEmpty(), engine.available(),
-                properties.effectiveTimeLimitMs(assignment.getTimeLimitMs()),
-                properties.effectiveMemoryLimitMb(assignment.getMemoryLimitMb()),
+                properties.effectiveTimeLimitMs(problem.getTimeLimitMs()),
+                properties.effectiveMemoryLimitMb(problem.getMemoryLimitMb()),
                 properties.defaultTimeLimitMs(), properties.defaultMemoryLimitMb(),
                 properties.maxTimeLimitMs(), properties.maxMemoryLimitMb(), properties.maxTestCases(),
                 languages(),
@@ -295,6 +312,11 @@ public class JudgeService {
 
     private List<String> languages() {
         return properties.languages() == null ? List.of() : List.copyOf(properties.languages().keySet());
+    }
+
+    private Problem requireProblem(Long problemId) {
+        return problemRepository.findById(problemId)
+                .orElseThrow(() -> new NotFoundException("문제를 찾을 수 없습니다."));
     }
 
     private Cohort requireCohort(Long cohortId) {

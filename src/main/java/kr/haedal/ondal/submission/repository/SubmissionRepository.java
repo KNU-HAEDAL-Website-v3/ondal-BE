@@ -51,6 +51,30 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<SubmissionMoment> findMomentsByAssignmentIdInAndUserId(@Param("assignmentIds") Collection<Long> assignmentIds,
                                                                 @Param("userId") Long userId);
 
+    // ---- HOJ 연습 제출 (V7) - 과제가 아니라 문제를 직접 가리키는 제출 -----------------------------------
+
+    /** 내 연습 제출 이력 - 최신이 앞. 연습은 코드만이라 links 를 fetch 할 필요가 없다 */
+    List<Submission> findAllByProblemIdAndUserIdOrderBySubmittedAtDesc(Long problemId, Long userId);
+
+    /** 연습 제출 단건 - 본인 것만 열람한다(서비스가 user 로 좁힌다) */
+    Optional<Submission> findByIdAndProblemIdAndUserId(Long id, Long problemId, Long userId);
+
+    boolean existsByProblemId(Long problemId);
+
+    /**
+     * 이 문제로 채점되는 제출 전부 - 과제로 낸 것(assignment.problem)과 HOJ 연습(problem) 양쪽.
+     * 테스트케이스를 고치면 이 모두가 재채점 대상이다 - 채점 기준은 문제 하나를 공유하기 때문.
+     */
+    @Query("""
+            select s from Submission s
+            where s.type = :type and (s.problem.id = :problemId or s.assignment.problem.id = :problemId)""")
+    List<Submission> findAllTargetingProblem(@Param("problemId") Long problemId, @Param("type") SubmissionType type);
+
+    @Query("""
+            select count(s) from Submission s
+            where s.type = :type and (s.problem.id = :problemId or s.assignment.problem.id = :problemId)""")
+    long countTargetingProblem(@Param("problemId") Long problemId, @Param("type") SubmissionType type);
+
     /** 과제 목록의 submissionCount(운영진 전용) 조립용 집계 */
     @Query("""
             select new kr.haedal.ondal.submission.dto.AssignmentSubmissionCount(s.assignment.id, count(s))

@@ -11,18 +11,18 @@ import java.util.List;
 
 public interface TestCaseRepository extends JpaRepository<TestCase, Long> {
 
-    List<TestCase> findAllByAssignmentIdOrderByPositionAsc(Long assignmentId);
+    List<TestCase> findAllByProblemIdOrderByPositionAsc(Long problemId);
 
-    List<TestCase> findAllByAssignmentIdAndIsPublicTrueOrderByPositionAsc(Long assignmentId);
+    List<TestCase> findAllByProblemIdAndIsPublicTrueOrderByPositionAsc(Long problemId);
 
-    long countByAssignmentId(Long assignmentId);
+    long countByProblemId(Long problemId);
 
-    /** 과제 목록의 judgeEnabled 조립용 - 케이스가 하나라도 있는 과제 id 만 (쿼리 1번) */
-    @Query("select distinct t.assignment.id from TestCase t where t.assignment.id in :assignmentIds")
-    List<Long> findAssignmentIdsWithCases(@Param("assignmentIds") Collection<Long> assignmentIds);
+    /** 목록의 judgeEnabled 조립용 - 케이스가 하나라도 있는 문제 id 만 (쿼리 1번) */
+    @Query("select distinct t.problem.id from TestCase t where t.problem.id in :problemIds")
+    List<Long> findProblemIdsWithCases(@Param("problemIds") Collection<Long> problemIds);
 
-    /** 통째 교체·과제 삭제 연쇄용 - 벌크 삭제. 호출 뒤 영속성 컨텍스트에 TestCase 가 남아 있지 않다는 전제(서비스가 조회 전에 부른다) */
+    /** 통째 교체·문제 삭제 연쇄용 - 벌크 삭제. 호출 뒤 영속성 컨텍스트에 TestCase 가 남아 있지 않다는 전제(서비스가 조회 전에 부른다) */
     @Modifying
-    @Query("delete from TestCase t where t.assignment.id = :assignmentId")
-    void deleteAllByAssignmentId(@Param("assignmentId") Long assignmentId);
+    @Query("delete from TestCase t where t.problem.id = :problemId")
+    void deleteAllByProblemId(@Param("problemId") Long problemId);
 }

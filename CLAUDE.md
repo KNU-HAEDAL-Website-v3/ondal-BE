@@ -9,9 +9,13 @@ Ondal(부트캠프 과제 제출·관리 플랫폼 + 온라인 저지)의 API �
 
 ## 핵심 설계 원칙
 
-1. **OJ 문제 = 분반 없는 과제**
-   - Assignment의 `cohort_id NULL` + `deadline NULL` + 자동채점 = OJ 문제
-   - 과제 제출·OJ 풀이는 파이프라인 하나로 처리 - 코드 두 벌 작성 금지
+1. **문제(Problem)와 배정(Assignment)은 다른 것 - 파이프라인은 하나** (2026-09-15, V7)
+   - `Problem` = 문제 자체: 번호(전역 유일)·제목·본문·실행 제한·테스트케이스·태그. 분반과 무관
+   - `Assignment` = 배정: "이 문제를 이 분반에 이 마감으로". 재출제는 배정 한 줄 추가 - 테스트케이스는 복제하지 않고 공유
+   - 이전 원칙("OJ 문제 = cohort_id NULL 인 과제")은 폐기 - 복제본끼리 채점 기준이 갈라지는 문제가 구조상 확정적이었음
+   - **과제 제출·HOJ 연습 풀이는 파이프라인 하나로 처리 - 코드 두 벌 작성 금지**
+     `submissions` 한 테이블에서 `assignment_id`(과제 제출) / `problem_id`(HOJ 연습) 중 정확히 하나를 가리킨다(DB CHECK).
+     채점은 어느 쪽이든 `JudgeService.enqueueIfJudged` -> `JudgeWorker` -> 서버 비교기로 같다
 2. **권한은 2층**: `User.global_role`(ADMIN/MEMBER) + `Enrollment.role`(OPERATOR/STUDENT)
    - 판정 순서: ① 로그인? → ② 전역 ADMIN이면 통과 → ③ 해당 분반 Enrollment 존재? → ④ role이 요구 수준 충족?
    - 판정은 공통 컴포넌트 하나로 구현해 모든 API에 적용 - 개별 API에서 권한 로직 별도 작성 금지
@@ -42,4 +46,4 @@ Ondal(부트캠프 과제 제출·관리 플랫폼 + 온라인 저지)의 API �
 
 - 포함: 로그인(홈페이지 Keycloak OIDC, 개발은 스텁) · 분반 CRUD+운영진 지정 · 수강생 배정 · 과제 CRUD · 제출 · 마감 판정 · 미제출자 대시보드
 - P1 제외(백로그): 출석부 / 수강신청 흐름 / 알림(2026-09-14 제외 확정) / Q&A 질문 글은 2026-09-09 P1 편입, 답변은 2026-09-14 P2 편입 - docs 결정 6·qna/design.md 결정 11, `qna` 슬라이스
-- P2 진행: 공지사항(`notice` 슬라이스, 2026-09-14 - 전체 공지는 관리자, 분반 공지는 운영진 이상. docs notice/design.md) · 출석부(`attendance` 슬라이스, 2026-09-14 - 차시 Session + 출석 기록, 표시는 운영진, 출석률은 서버 계산. docs attendance/design.md) · 자동채점(`judge` 슬라이스, 2026-09-14 - 과제의 테스트케이스 + 제출의 채점 결과 1행, 판정은 서버 비교기, 실행만 엔진. 엔진 모드 `ondal.judge.engine` = fake(local·test) | judge0(prod, url·token) | off(prod 기본 - 채점 대기). docs judge/design.md)
+- P2 진행: 문제 라이브러리·태그·HOJ(`problem` 슬라이스, 2026-09-15 - 문제 CRUD는 운영진 이상(`@OperatorAnywhere`), 태그 어휘 관리는 ADMIN, 연습 제출·채점은 로그인 누구나. docs judge/design.md 결정 17) · 공지사항(`notice` 슬라이스, 2026-09-14 - 전체 공지는 관리자, 분반 공지는 운영진 이상. docs notice/design.md) · 출석부(`attendance` 슬라이스, 2026-09-14 - 차시 Session + 출석 기록, 표시는 운영진, 출석률은 서버 계산. docs attendance/design.md) · 자동채점(`judge` 슬라이스, 2026-09-14 - 과제의 테스트케이스 + 제출의 채점 결과 1행, 판정은 서버 비교기, 실행만 엔진. 엔진 모드 `ondal.judge.engine` = fake(local·test) | judge0(prod, url·token) | off(prod 기본 - 채점 대기). docs judge/design.md)
