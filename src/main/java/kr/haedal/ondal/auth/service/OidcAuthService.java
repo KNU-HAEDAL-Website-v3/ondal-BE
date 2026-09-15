@@ -64,10 +64,11 @@ public class OidcAuthService {
     }
 
     /** 로그인 시작 - 세션에 보관할 PendingLogin 과 사용자를 보낼 홈페이지 인증 페이지 주소. Discovery 실패 시 OIDC_UNAVAILABLE */
-    public LoginStart beginLogin(String returnTo) {
+    public LoginStart beginLogin(String returnTo, String app) {
         OidcProviderMetadata metadata = provider.metadata();
         PendingLogin pending = new PendingLogin(
-                Pkce.randomToken(), Pkce.randomToken(), Pkce.randomToken(), safeReturnTo(returnTo), Instant.now());
+                Pkce.randomToken(), Pkce.randomToken(), Pkce.randomToken(), safeReturnTo(returnTo),
+                properties.knownApp(app), Instant.now());
         URI authorizationUri = UriComponentsBuilder.fromUriString(metadata.authorizationEndpoint())
                 .queryParam("response_type", "code")
                 .queryParam("client_id", properties.clientId())
@@ -124,17 +125,17 @@ public class OidcAuthService {
         return new LoginResult(user, rawIdToken, pending.returnTo());
     }
 
-    /** 로그인 성공 후 돌아갈 FE 주소 - 사이트 내부 경로(returnTo)만 허용 */
-    public URI frontendUri(String returnTo) {
-        return UriComponentsBuilder.fromUriString(properties.frontendBase() + safeReturnTo(returnTo))
+    /** 로그인 성공 후 돌아갈 FE 주소 - 오리진은 app 키로 설정에서 고르고, 경로는 사이트 내부(returnTo)만 허용 */
+    public URI frontendUri(String returnTo, String app) {
+        return UriComponentsBuilder.fromUriString(properties.frontendBase(app) + safeReturnTo(returnTo))
                 .build()
                 .encode()
                 .toUri();
     }
 
     /** 로그인 실패 시 FE 로그인 화면 - 실패 이유는 쿼리 error(OidcLoginError 이름), 원래 목적지는 returnTo 로 넘겨 재시도 후 복귀 */
-    public URI loginErrorUri(OidcLoginError error, String returnTo) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(properties.frontendBase() + "/login")
+    public URI loginErrorUri(OidcLoginError error, String returnTo, String app) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(properties.frontendBase(app) + "/login")
                 .queryParam("error", error.name());
         String safe = safeReturnTo(returnTo);
         if (!"/".equals(safe)) {
@@ -147,7 +148,7 @@ public class OidcAuthService {
      * 홈페이지(SSO) 로그아웃 주소 - Keycloak end_session_endpoint + id_token_hint(확인 화면 생략) + post_logout_redirect_uri(FE 로그인 화면).
      * 홈페이지가 주소를 제공하지 않거나 Discovery 가 실패하면 null - Ondal 로그아웃은 이미 끝난 뒤라 실패로 만들지 않는다.
      */
-    public String logoutUrl(String idToken) {
+    public String logoutUrl(String idToken, String app) {
         try {
             String endSession = provider.metadata().endSessionEndpoint();
             if (endSession == null || endSession.isBlank()) {
@@ -155,7 +156,7 @@ public class OidcAuthService {
             }
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(endSession)
                     .queryParam("client_id", properties.clientId())
-                    .queryParam("post_logout_redirect_uri", properties.frontendBase() + "/login");
+                    .queryParam("post_logout_redirect_uri", properties.frontendBase(app) + "/login");
             if (idToken != null && !idToken.isBlank()) {
                 builder.queryParam("id_token_hint", idToken);
             }

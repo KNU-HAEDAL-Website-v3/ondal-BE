@@ -35,6 +35,8 @@ class OidcAuthApiTest extends ApiTestSupport {
     static final FakeOidcProvider IDP = FakeOidcProvider.start();
     static final String REDIRECT_URI = "http://localhost/api/auth/callback";
     static final String FE = "http://fe.test";
+    /** 두 번째 FE(HOJ) - 앱별 복귀 주소 검증용 */
+    static final String HOJ_FE = "http://hoj.test";
 
     @DynamicPropertySource
     static void oidcMode(DynamicPropertyRegistry registry) {
@@ -44,6 +46,7 @@ class OidcAuthApiTest extends ApiTestSupport {
         registry.add("ondal.auth.oidc.client-secret", () -> FakeOidcProvider.CLIENT_SECRET);
         registry.add("ondal.auth.oidc.redirect-uri", () -> REDIRECT_URI);
         registry.add("ondal.auth.oidc.frontend-url", () -> FE);
+        registry.add("ondal.auth.oidc.frontend-urls.hoj", () -> HOJ_FE);
     }
 
     @AfterAll
@@ -126,6 +129,38 @@ class OidcAuthApiTest extends ApiTestSupport {
         mockMvc.perform(get("/api/auth/me").session(sessionOf(callback)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("kim"));
+    }
+
+    // ---- 여러 FE(Ondal / HOJ) - 시작한 앱으로 돌아온다 -------------------------------------
+
+    @Test
+    void app_키를_주면_그_FE_로_복귀한다() throws Exception {
+        // 오리진은 서버 설정(frontend-urls)에서만 오고, 클라이언트는 키만 보낸다
+        Started started = startLogin("/problems/3", "hoj");
+        IDP.expectExchange("code-20", started.codeChallenge(), claims(started.nonce(), "hong", "홍길동"));
+        MvcResult callback = callback(started.session(), "code-20", started.state());
+        assertThat(callback.getResponse().getRedirectedUrl()).isEqualTo(HOJ_FE + "/problems/3");
+    }
+
+    @Test
+    void 모르는_app_키는_기본_FE_로_복귀한다() throws Exception {
+        // 오픈 리다이렉트 방지 - 설정에 없는 값은 조용히 기본값으로 눕힌다
+        Started started = startLogin("/", "https://evil.example");
+        IDP.expectExchange("code-21", started.codeChallenge(), claims(started.nonce(), "hong", "홍길동"));
+        MvcResult callback = callback(started.session(), "code-21", started.state());
+        assertThat(callback.getResponse().getRedirectedUrl()).isEqualTo(FE + "/");
+    }
+
+    @Test
+    void app_키로_시작했으면_로그인_실패도_그_FE_의_로그인_화면으로() throws Exception {
+        Started started = startLogin("/problems/3", "hoj");
+        MvcResult callback = mockMvc.perform(get("/api/auth/callback")
+                        .session(started.session())
+                        .param("error", "access_denied")
+                        .param("state", started.state()))
+                .andExpect(status().isFound())
+                .andReturn();
+        assertThat(callback.getResponse().getRedirectedUrl()).startsWith(HOJ_FE + "/login?error=");
     }
 
     @Test
@@ -292,9 +327,16 @@ class OidcAuthApiTest extends ApiTestSupport {
     }
 
     private Started startLogin(String returnTo) throws Exception {
+        return startLogin(returnTo, null);
+    }
+
+    private Started startLogin(String returnTo, String app) throws Exception {
         MockHttpServletRequestBuilder request = get("/api/auth/login");
         if (returnTo != null) {
             request.param("returnTo", returnTo);
+        }
+        if (app != null) {
+            request.param("app", app);
         }
         MvcResult result = mockMvc.perform(request).andExpect(status().isFound()).andReturn();
         String location = result.getResponse().getRedirectedUrl();

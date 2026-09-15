@@ -101,8 +101,8 @@ ondal:
       url: ${JUDGE0_URL:}
       token: ${JUDGE0_TOKEN:}
   cors:
-    # FE 커스텀 도메인이 기본값. pages.dev 미리보기 오리진은 세션 쿠키(lax)가 실리지 않아 로그인 불가 - 필요 시 .env에서 쉼표로 추가(공백 금지)
-    allowed-origins: ${CORS_ORIGINS:https://ondal.haedal-sos-man-in-the-mirror.com}
+    # FE 커스텀 도메인들이 기본값(Ondal + HOJ). pages.dev 미리보기 오리진은 세션 쿠키(lax)가 실리지 않아 로그인 불가 - 필요 시 .env에서 쉼표로 추가(공백 금지)
+    allowed-origins: ${CORS_ORIGINS:https://ondal.haedal-sos-man-in-the-mirror.com,https://hoj.haedal-sos-man-in-the-mirror.com}
   auth:
     mode: oidc   # 홈페이지 로그인(Keycloak) - OIDC 인가 코드 + PKCE, BE 가 코드 교환 (docs 결정 7). auth/oidc 패키지
     oidc:
@@ -113,8 +113,12 @@ ondal:
       client-secret: ${OIDC_CLIENT_SECRET}      # Keycloak 클라이언트(confidential)의 secret - .env 에서 주입
       # Keycloak 클라이언트의 Valid redirect URIs 에 등록된 값과 문자 단위로 같아야 한다
       redirect-uri: ${OIDC_REDIRECT_URI:https://ondal-api.haedal-sos-man-in-the-mirror.com/api/auth/callback}
-      # 로그인 성공 후 돌아갈 FE. 로그인 실패는 {frontend-url}/login?error=코드 로 보낸다
+      # 로그인 성공 후 돌아갈 기본 FE. 로그인 실패는 {frontend-url}/login?error=코드 로 보낸다
       frontend-url: ${FE_URL:https://ondal.haedal-sos-man-in-the-mirror.com}
+      # FE 가 여럿일 때 app 키 -> 주소. 클라이언트는 ?app=hoj 처럼 **키만** 보내고 오리진은 여기서만 온다(오픈 리다이렉트 차단)
+      # HOJ 서브도메인 배포 전에는 비워 두면 된다 - 모든 로그인이 기본 FE 로 돌아간다
+      frontend-urls:
+        hoj: ${HOJ_URL:https://hoj.haedal-sos-man-in-the-mirror.com}
 
 server:
   # nginx(0-haedal-infra)가 보내는 X-Forwarded-Proto=https 를 신뢰 - springdoc servers URL·리다이렉트가 https 로 나간다
