@@ -1,6 +1,7 @@
 package kr.haedal.ondal.auth.service;
 
 import kr.haedal.ondal.auth.AuthMode;
+import kr.haedal.ondal.auth.oidc.DisplayName;
 import kr.haedal.ondal.auth.oidc.OidcHttpClient;
 import kr.haedal.ondal.auth.oidc.OidcLoginError;
 import kr.haedal.ondal.auth.oidc.OidcLoginException;
@@ -109,7 +110,10 @@ public class OidcAuthService {
         if (loginId == null || loginId.isBlank()) {
             throw new OidcLoginException(OidcLoginError.INVALID_ID_TOKEN, "ID 토큰에 클레임 없음: " + properties.loginIdClaim());
         }
-        String name = idToken.getClaimAsString(properties.nameClaim());
+        // 한글 이름은 성 + 이름 순서로 다시 붙인다 - Keycloak 의 name 은 "이름 성"(given family) 순서라 "철수 김" 으로 온다
+        String name = DisplayName.of(idToken.getClaimAsString(properties.nameClaim()),
+                idToken.getClaimAsString("given_name"),
+                idToken.getClaimAsString("family_name"));
 
         User user;
         try {
