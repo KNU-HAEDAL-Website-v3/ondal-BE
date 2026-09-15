@@ -47,17 +47,19 @@ public class OidcAuthController {
     }
 
     /** 공개 경로(AuthPaths.PUBLIC). FE 의 "홈페이지 계정으로 로그인" 버튼이 이 주소로 이동한다 */
-    @Operation(summary = "로그인 시작 - 홈페이지(Keycloak) 로그인 화면으로 302. returnTo: 로그인 후 돌아갈 FE 내부 경로(/로 시작, 그 외는 /)")
+    @Operation(summary = "로그인 시작 - 홈페이지(Keycloak) 로그인 화면으로 302. returnTo: 로그인 후 돌아갈 FE 내부 경로(/로 시작, 그 외는 /). app: 어느 FE 로 돌아올지(설정에 등록된 키만, 예: hoj). 생략하면 기본 FE")
     @GetMapping("/login")
-    public ResponseEntity<Void> login(@RequestParam(required = false) String returnTo, HttpServletRequest request) {
+    public ResponseEntity<Void> login(@RequestParam(required = false) String returnTo,
+                                      @RequestParam(required = false) String app,
+                                      HttpServletRequest request) {
         try {
-            LoginStart start = oidcAuthService.beginLogin(returnTo);
+            LoginStart start = oidcAuthService.beginLogin(returnTo, app);
             // 콜백에서 대조할 값(state·nonce·code_verifier)은 세션에만 둔다 - 브라우저에 그대로 노출되는 URL 에는 state·nonce·challenge 만 나간다
             request.getSession(true).setAttribute(SessionConst.OIDC_PENDING_LOGIN, start.pending());
             return redirect(start.authorizationUri());
         } catch (OidcLoginException e) {
             log.warn("[auth] 로그인 시작 실패 {}: {}", e.error(), e.getMessage(), e.getCause());
-            return redirect(oidcAuthService.loginErrorUri(e.error(), returnTo));
+            return redirect(oidcAuthService.loginErrorUri(e.error(), returnTo, app));
         }
     }
 
@@ -70,14 +72,17 @@ public class OidcAuthController {
                                          HttpServletRequest request) {
         PendingLogin pending = consumePendingLogin(request);
         String returnTo = pending == null ? null : pending.returnTo();
+        // 어느 FE 에서 시작한 로그인인지 - 그 앱으로 돌려보내고, 로그아웃 때도 같은 앱으로 복귀시킨다
+        String app = pending == null ? null : pending.app();
         try {
             LoginResult result = oidcAuthService.completeLogin(pending, code, state, error);
             HttpSession session = LoginSession.establish(request, result.user());
             session.setAttribute(SessionConst.OIDC_ID_TOKEN, result.idToken());
-            return redirect(oidcAuthService.frontendUri(result.returnTo()));
+            session.setAttribute(SessionConst.OIDC_APP, app);
+            return redirect(oidcAuthService.frontendUri(result.returnTo(), app));
         } catch (OidcLoginException e) {
             log.warn("[auth] 로그인 실패 {}: {}", e.error(), e.getMessage(), e.getCause());
-            return redirect(oidcAuthService.loginErrorUri(e.error(), returnTo));
+            return redirect(oidcAuthService.loginErrorUri(e.error(), returnTo, app));
         }
     }
 

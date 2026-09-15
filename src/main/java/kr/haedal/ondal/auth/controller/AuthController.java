@@ -57,10 +57,13 @@ public class AuthController {
             return new LogoutResponse(null);
         }
         Object idToken = session.getAttribute(SessionConst.OIDC_ID_TOKEN);
+        // 로그인을 시작한 FE 로 돌려보낸다 - HOJ 에서 로그아웃했는데 Ondal 로그인 화면이 뜨면 안 된다
+        Object app = session.getAttribute(SessionConst.OIDC_APP);
         session.invalidate();
 
         OidcAuthService oidc = oidcAuthService.getIfAvailable();
-        String logoutUrl = oidc == null ? null : oidc.logoutUrl(idToken instanceof String raw ? raw : null);
+        String logoutUrl = oidc == null ? null
+                : oidc.logoutUrl(idToken instanceof String raw ? raw : null, app instanceof String key ? key : null);
         return new LogoutResponse(logoutUrl);
     }
 }

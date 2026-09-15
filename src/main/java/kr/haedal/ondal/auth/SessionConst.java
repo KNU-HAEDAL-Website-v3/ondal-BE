@@ -18,6 +18,12 @@ public final class SessionConst {
      */
     public static final String OIDC_ID_TOKEN = "OIDC_ID_TOKEN";
 
+    /**
+     * oidc 모드: 로그인을 시작한 FE 앱 키(예: hoj). 로그아웃 뒤 홈페이지가 돌려보낼 주소를 그 앱으로 맞추는 데만 쓴다.
+     * 값은 서버 설정에 등록된 키만 들어온다 (OidcProperties.knownApp).
+     */
+    public static final String OIDC_APP = "OIDC_APP";
+
     private SessionConst() {
     }
 }
