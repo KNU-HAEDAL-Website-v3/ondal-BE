@@ -133,6 +133,15 @@ server:
         same-site: ${COOKIE_SAMESITE:lax}
         secure: ${COOKIE_SECURE:true}
 
+springdoc:
+  # 운영에서는 API 문서를 닫는다 (2026-09-16 전수조사) - 인증 인터셉터는 /api/** 만 덮어서
+  # /v3/api-docs 와 /swagger-ui/index.html 이 비로그인에 200 으로 열려 있었다. 전체 API 표면·DTO 구조가 그대로 노출됨
+  # 계약 확인은 로컬·dev 에서 한다 (FE CLAUDE.md "계약 기준: 백엔드 springdoc")
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 logging:
   level:
     org.hibernate.SQL: warn   # 공통 프로필의 학습용 debug를 운영에서 끔
