@@ -25,7 +25,7 @@ public record OidcProperties(
         /** 로그인 후 돌아갈 기본 FE 주소(끝에 / 없이). 실패는 {frontendUrl}/login?error=코드 */
         @NotBlank String frontendUrl,
         /**
-         * FE 가 여럿일 때 app 키 -> 그 앱의 주소 (예: hoj -> https://hoj.haedal-...).
+         * FE 가 여럿일 때 app 키 -> 그 앱의 주소 (예: hoj -> https://oj.haedal-...).
          * 오리진은 **설정에서만** 온다 - 클라이언트는 키만 보내므로 오픈 리다이렉트가 되지 않는다.
          * 비어 있으면 모든 요청이 frontendUrl 로 돌아간다(단일 FE 시절과 동일).
          */
