@@ -98,7 +98,8 @@ sudo docker compose exec db psql -U ondal -d ondal \
 |---|---|---|---|
 | `COMPOSE_FILE` | 권장 | - | `docker-compose.prod.yml` - `-f` 생략용 |
 | `DB_PASSWORD` | 필수 | - | PostgreSQL 비밀번호 - db·app 양쪽에 주입 |
-| `CORS_ORIGINS` | 선택 | FE 커스텀 도메인 | 쉼표 구분, 공백 금지 |
+| `CORS_ORIGINS` | 선택 | `https://ondal.<도메인>,https://oj.<도메인>` | FE 오리진(Ondal + HOJ). 쉼표 구분, 공백 금지 |
+| `HOJ_URL` | 선택 | `https://oj.<도메인>` | HOJ FE 주소 - `?app=hoj` 로 시작한 로그인의 복귀 주소 (키 이름은 hoj, 주소는 oj.) |
 | `COOKIE_SAMESITE` | 선택 | `lax` | FE·API가 같은 등록 도메인이라 lax 가능. cross-site FE(*.pages.dev)일 때만 `none` |
 | `COOKIE_SECURE` | 선택 | `true` | HTTPS 전제. http 직접 테스트 때만 `false` |
 | `OIDC_ISSUER` | 필수 | - | Keycloak realm 의 issuer (예: `https://auth.<도메인>/realms/<realm>`) - 비면 기동 실패 |
