@@ -9,15 +9,17 @@ import com.fasterxml.jackson.annotation.JsonValue; // Jackson 3 에서도 어노
  * | 직책 | 누구 | 명칭 |
  * |---|---|---|
  * | EXECUTIVE | 동아리 임원단 (User.globalRole = ADMIN) | 해구르르 - 고정 |
+ * | MAINTAINER | 유지보수 팀 (User.globalRole = MAINTAINER, 권한은 해구르르와 같음 - 결정 12) | 관리자 |
  * | OPERATOR  | 부트캠프 분반을 맡은 학생 (Enrollment.role = OPERATOR) | 교육운영진 - 고정 |
  * | MEMBER    | 그 외 (수강생, 미소속 부원) | 일반 수강생 - 바뀔 수 있음. 아래 label 한 줄만 고치면 전체 반영 |
  *
- * 판정 우선순위: 전역 ADMIN 이면 어느 분반에서든 해구르르 → 분반 OPERATOR 면 교육운영진 → 나머지.
+ * 판정 우선순위: 전역 MAINTAINER 면 관리자 → 전역 ADMIN 이면 어느 분반에서든 해구르르 → 분반 OPERATOR 면 교육운영진 → 나머지.
  * (permissions.md 의 "임원진 / 교육 운영진 / 교육생" 이 이 세 이름이다)
  */
 public enum RoleTitle {
 
     EXECUTIVE("해구르르"),
+    MAINTAINER("관리자"),
     OPERATOR("교육운영진"),
     MEMBER("일반 수강생");   // <- 이 명칭은 미확정. 바꾸려면 여기만 수정
 
@@ -35,6 +37,9 @@ public enum RoleTitle {
 
     /** 이 사람이 이 분반(또는 분반 무관 문맥이면 roleOrNull = null)에서 어떤 직책으로 보이는가 */
     public static RoleTitle of(User user, EnrollmentRole roleOrNull) {
+        if (user.getGlobalRole() == GlobalRole.MAINTAINER) {
+            return MAINTAINER;
+        }
         if (user.isAdmin()) {
             return EXECUTIVE;
         }

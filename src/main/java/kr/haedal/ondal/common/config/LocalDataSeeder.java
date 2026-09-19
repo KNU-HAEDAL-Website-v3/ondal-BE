@@ -120,6 +120,7 @@ public class LocalDataSeeder implements CommandLineRunner {
     public void run(String... args) {
         if (userRepository.findByLoginId("admin").isEmpty()) {
             userRepository.save(User.admin("admin", "관리자"));
+            userRepository.save(User.maintainer("maintainer", "유지보수"));   // 관리자(MAINTAINER) - 해구르르와 같은 권한, 표시만 "관리자" (결정 12)
             log.info("[seed] local 관리자 계정 생성: loginId=admin");
         }
         if (userRepository.findByLoginId("newbie").isEmpty()) {

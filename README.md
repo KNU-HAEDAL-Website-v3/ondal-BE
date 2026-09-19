@@ -34,7 +34,7 @@ curl -i localhost:8080/api/auth/me
 - API 문서(Swagger UI): http://localhost:8080/swagger-ui/index.html - 프론트 계약의 기준
   - 로그인 API 선호출 시 이후 요청에 세션 쿠키 자동 첨부
 - local 프로필 샘플 데이터(시더)
-  - 계정: `admin`(ADMIN) / `operator1` / `student1`~`student3`
+  - 계정: `admin`(ADMIN, 해구르르) / `maintainer`(MAINTAINER, 관리자 - 해구르르와 같은 권한) / `operator1` / `student1`~`student3` / `newbie`(승인 대기)
   - 분반: "2026-2 C언어"(진행 중) · "2026-1 파이썬"(보관)
   - 어떤 loginId로든 스텁 로그인 가능 → 역할별 화면 즉시 확인
 - 테스트: `./gradlew test` - Testcontainers로 PostgreSQL 구동, Docker 실행 필수
@@ -88,6 +88,7 @@ curl -i localhost:8080/api/auth/me
 ```bash
 sudo docker compose exec db psql -U ondal -d ondal \
   -c "UPDATE users SET global_role = 'ADMIN' WHERE login_id = '<loginId>';"
+  - 유지보수 팀(동아리 임원 아님)은 `'MAINTAINER'` - 권한은 ADMIN 과 같고 화면 표시만 "관리자" (docs 결정 12)
 ```
 
 3. 로그아웃 후 재로그인 → `/api/auth/me` 응답의 `globalRole`이 `ADMIN`

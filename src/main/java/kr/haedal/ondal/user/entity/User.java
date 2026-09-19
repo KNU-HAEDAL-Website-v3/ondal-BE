@@ -76,8 +76,16 @@ public class User {
         return new User(loginId, name, GlobalRole.ADMIN, UserStatus.ACTIVE);
     }
 
+    /**
+     * 관리자(유지보수 팀) 생성 - 부트스트랩(시더 또는 수동 SQL) 전용. 해구르르(ADMIN)와 권한이 같고 표시 명칭만 "관리자" (docs 결정 12).
+     */
+    public static User maintainer(String loginId, String name) {
+        return new User(loginId, name, GlobalRole.MAINTAINER, UserStatus.ACTIVE);
+    }
+
+    /** 전역 관리자인가 - 해구르르(ADMIN)와 관리자(MAINTAINER) 둘 다. 모든 권한 판정은 이 메서드로 (GlobalRole 직접 비교 금지) */
     public boolean isAdmin() {
-        return globalRole == GlobalRole.ADMIN;
+        return globalRole == GlobalRole.ADMIN || globalRole == GlobalRole.MAINTAINER;
     }
 
     public boolean isPending() {
