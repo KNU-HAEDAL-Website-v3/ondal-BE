@@ -9,7 +9,7 @@ import kr.haedal.ondal.auth.authorization.LoginOnly;
 import kr.haedal.ondal.auth.authorization.OperatorAnywhere;
 import kr.haedal.ondal.problem.bank.ProblemBankSyncService;
 import kr.haedal.ondal.problem.dto.ProblemBankSourceResponse;
-import kr.haedal.ondal.problem.dto.ProblemBankSyncResult;
+import kr.haedal.ondal.problem.dto.ProblemBankSyncStatus;
 import kr.haedal.ondal.problem.dto.ProblemImportRequest;
 import kr.haedal.ondal.problem.dto.ProblemImportResult;
 import kr.haedal.ondal.problem.dto.ProblemPayload;
@@ -62,11 +62,19 @@ public class ProblemController {
         return problemBankSyncService.source();
     }
 
-    @Operation(summary = "[관리자] 깃허브에서 문제 가져오기 - 레포 ref 의 zip 을 서버가 받아 problems/* 를 읽고 번들 가져오기와 같은 규칙(번호 키·overwrite·태그 생성·테스트케이스 교체)으로 넣는다. 결과에 커밋 SHA")
+    @Operation(summary = "[관리자] 깃허브에서 문제 가져오기 시작 - 레포 ref 의 zip 을 서버가 받아 problems/* 를 읽고 번들 가져오기와 같은 규칙(번호 키·overwrite·태그 생성·테스트케이스 교체)으로 넣는다. 수 초~수십 초 걸리므로 202 로 바로 돌려주고 GET .../status 로 폴링. 이미 도는 중이면 409")
     @AdminOnly
     @PostMapping("/import/github")
-    public ProblemBankSyncResult importFromGithub(@RequestParam(defaultValue = "false") boolean overwrite, @LoginUser User user) {
-        return problemBankSyncService.importFromGithub(overwrite, user);
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ProblemBankSyncStatus importFromGithub(@RequestParam(defaultValue = "false") boolean overwrite, @LoginUser User user) {
+        return problemBankSyncService.start(overwrite, user);
+    }
+
+    @Operation(summary = "[관리자] 깃허브 가져오기 진행 상태 - RUNNING 이면 단계·진행 수, DONE 이면 결과(커밋 SHA·집계), FAILED 이면 원인")
+    @AdminOnly
+    @GetMapping("/import/github/status")
+    public ProblemBankSyncStatus importFromGithubStatus() {
+        return problemBankSyncService.status();
     }
 
     /** 문제 은행 레포(ondal-problems)의 빌드 산출물(JSON)을 관리자 화면에서 올린다 - 운영은 OIDC 세션이라 스크립트로 넣을 수 없다 */

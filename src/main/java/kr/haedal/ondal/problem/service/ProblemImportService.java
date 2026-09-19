@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntConsumer;
 
 /**
  * 문제 번들 가져오기 (관리자 전용) - 문제 은행 레포(ondal-problems)의 빌드 산출물을 한 트랜잭션으로 넣는다.
@@ -48,6 +49,11 @@ public class ProblemImportService {
     }
 
     public ProblemImportResult importBundle(ProblemImportRequest request, User admin) {
+        return importBundle(request, admin, done -> { });
+    }
+
+    /** onProgress: 항목 하나를 처리(건너뜀 포함)할 때마다 지금까지의 개수 - 깃허브 가져오기 작업이 진행률로 보여 준다 */
+    public ProblemImportResult importBundle(ProblemImportRequest request, User admin, IntConsumer onProgress) {
         Map<String, Tag> tagsByName = new LinkedHashMap<>();
         tagRepository.findAllByOrderByNameAsc().forEach(tag -> tagsByName.put(tag.getName(), tag));
         List<String> createdTags = new ArrayList<>();
@@ -64,6 +70,7 @@ public class ProblemImportService {
             Optional<Problem> existing = problemRepository.findByProblemNo(item.problemNo());
             if (existing.isPresent() && !request.overwriteFlag()) {
                 skipped++;   // 건너뛰는 문제의 태그는 만들지 않는다 - 건너뛴 항목이 흔적을 남기면 안 된다
+                onProgress.accept(created + updated + skipped);
                 continue;
             }
             List<Tag> tags = resolveOrCreate(item.tags(), tagsByName, createdTags);
@@ -83,6 +90,7 @@ public class ProblemImportService {
             judgeService.saveConfig(problem.getId(), new JudgeConfigRequest(
                     item.timeLimitMs(), item.memoryLimitMb(), item.testCases() == null ? List.of() : item.testCases(), false));
             processed.add(item.problemNo());
+            onProgress.accept(created + updated + skipped);
         }
         return new ProblemImportResult(created, updated, skipped, createdTags, processed);
     }

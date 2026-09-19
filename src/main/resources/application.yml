@@ -52,6 +52,7 @@ ondal:
   problem-bank:
     # 문제 은행 레포(비공개 ondal-problems)에서 관리자 화면 "깃허브에서 가져오기"로 직접 가져온다 (docs 결정 11 보완)
     # 서버가 GitHub API 로 ref 의 zip 을 받아 problems/*/{meta.json, problem.md, tests/} 를 읽는다 - 로컬 빌드(bank.json) 불필요
+    async: true                  # 작업은 별도 스레드, 화면은 GET .../status 폴링 (프록시 60초 제한 회피). test 는 false
     github:
       api-url: https://api.github.com
       repo: KNU-HAEDAL-Website-v3/ondal-problems
