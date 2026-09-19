@@ -1,7 +1,9 @@
 package kr.haedal.ondal.user.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import kr.haedal.ondal.user.entity.GlobalRole;
 import kr.haedal.ondal.user.entity.User;
+import kr.haedal.ondal.user.entity.UserStatus;
 
 /**
  * 엔티티를 API에 직접 노출하지 않고 응답 전용 DTO로 감싼다.
@@ -13,9 +15,10 @@ public record UserResponse(
         Long id,
         String loginId,
         String name,
-        GlobalRole globalRole
+        GlobalRole globalRole,
+        @Schema(description = "PENDING = 승인 대기(운영진 승인 전 - 다른 API 는 403 USER_PENDING) / ACTIVE = 이용 가능") UserStatus status
 ) {
     public static UserResponse from(User user) {
-        return new UserResponse(user.getId(), user.getLoginId(), user.getName(), user.getGlobalRole());
+        return new UserResponse(user.getId(), user.getLoginId(), user.getName(), user.getGlobalRole(), user.getStatus());
     }
 }

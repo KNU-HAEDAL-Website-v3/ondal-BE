@@ -122,6 +122,10 @@ public class LocalDataSeeder implements CommandLineRunner {
             userRepository.save(User.admin("admin", "관리자"));
             log.info("[seed] local 관리자 계정 생성: loginId=admin");
         }
+        if (userRepository.findByLoginId("newbie").isEmpty()) {
+            // 승인 대기 화면·부원 관리(승인) 확인용 - 스텁 로그인 newbie 로 들어가면 "승인 대기" 만 보인다 (docs 결정 10)
+            userRepository.save(User.pending("newbie", "신입부원"));
+        }
         if (cohortRepository.count() > 0) {
             return; // 이미 분반이 있으면 샘플을 다시 만들지 않는다
         }

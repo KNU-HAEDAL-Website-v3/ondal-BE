@@ -93,7 +93,13 @@ class OidcAuthApiTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.loginId").value("hong"))
                 .andExpect(jsonPath("$.name").value("홍길동"))
-                .andExpect(jsonPath("$.globalRole").value("MEMBER"));   // 첫 로그인은 MEMBER 로 생성
+                .andExpect(jsonPath("$.globalRole").value("MEMBER"))    // 첫 로그인은 MEMBER 로 생성
+                .andExpect(jsonPath("$.status").value("PENDING"));      // 그리고 승인 대기 - 운영진이 승인·배정해야 열린다 (docs 결정 10)
+
+        // 승인 전에는 me 말고는 전부 403 USER_PENDING
+        mockMvc.perform(get("/api/me/cohorts").session(loginSession))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("USER_PENDING"));
 
         // 토큰 교환 요청 내용 - redirect_uri·client_id·PKCE verifier 가 실린다 (verifier 의 S256 대조는 IDP 가 했다)
         Map<String, String> tokenRequest = IDP.tokenRequests.getLast();
@@ -117,7 +123,8 @@ class OidcAuthApiTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(admin.getId()))
                 .andExpect(jsonPath("$.name").value("신학철"))
-                .andExpect(jsonPath("$.globalRole").value("ADMIN"));
+                .andExpect(jsonPath("$.globalRole").value("ADMIN"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));   // 이미 있던 계정의 승인 상태는 로그인이 건드리지 않는다
     }
 
     @Test
