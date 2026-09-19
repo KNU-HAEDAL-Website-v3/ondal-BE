@@ -110,6 +110,9 @@ sudo docker compose exec db psql -U ondal -d ondal \
 | `OIDC_CLIENT_ID` | 선택 | `ondal-be` | Keycloak 클라이언트 ID |
 | `OIDC_REDIRECT_URI` | 선택 | API 도메인 `/api/auth/callback` | Keycloak 클라이언트의 Valid redirect URIs 와 문자 단위 일치 |
 | `FE_URL` | 선택 | FE 커스텀 도메인 | 로그인 후 복귀·실패 안내(`/login?error=`)·로그아웃 후 복귀 주소의 밑동 |
+| `PROBLEM_BANK_GITHUB_TOKEN` | 선택 | - | 문제 은행 레포(비공개 `ondal-problems`)를 읽는 GitHub fine-grained PAT - 있으면 HOJ 관리자 화면 "깃허브에서 가져오기" 활성. 만드는 법: GitHub Settings > Developer settings > Fine-grained tokens > Generate → Repository access "Only select repositories" 에 ondal-problems → Permissions "Contents: Read-only" (그 외 없음) → 만료 1년. 비면 파일 업로드만 가능 |
+| `PROBLEM_BANK_REPO` | 선택 | `KNU-HAEDAL-Website-v3/ondal-problems` | 가져올 레포 (소유자/이름) |
+| `PROBLEM_BANK_REF` | 선택 | `main` | 가져올 브랜치·태그 |
 
 ### 주의
 

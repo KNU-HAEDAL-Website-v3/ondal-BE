@@ -7,6 +7,9 @@ import kr.haedal.ondal.auth.LoginUser;
 import kr.haedal.ondal.auth.authorization.AdminOnly;
 import kr.haedal.ondal.auth.authorization.LoginOnly;
 import kr.haedal.ondal.auth.authorization.OperatorAnywhere;
+import kr.haedal.ondal.problem.bank.ProblemBankSyncService;
+import kr.haedal.ondal.problem.dto.ProblemBankSourceResponse;
+import kr.haedal.ondal.problem.dto.ProblemBankSyncResult;
 import kr.haedal.ondal.problem.dto.ProblemImportRequest;
 import kr.haedal.ondal.problem.dto.ProblemImportResult;
 import kr.haedal.ondal.problem.dto.ProblemPayload;
@@ -42,10 +45,28 @@ public class ProblemController {
 
     private final ProblemService problemService;
     private final ProblemImportService problemImportService;
+    private final ProblemBankSyncService problemBankSyncService;
 
-    public ProblemController(ProblemService problemService, ProblemImportService problemImportService) {
+    public ProblemController(ProblemService problemService, ProblemImportService problemImportService,
+                             ProblemBankSyncService problemBankSyncService) {
         this.problemService = problemService;
         this.problemImportService = problemImportService;
+        this.problemBankSyncService = problemBankSyncService;
+    }
+
+    /** 문제 은행 레포(GitHub, 비공개)를 서버가 직접 읽는다 - 관리자 화면 "깃허브에서 가져오기". 로컬 빌드·파일 선택이 필요 없는 기본 경로 */
+    @Operation(summary = "[관리자] 문제 은행 레포 설정 - 어느 레포·브랜치에서 가져오는지, 토큰이 설정돼 있는지(false 면 파일 업로드만 가능)")
+    @AdminOnly
+    @GetMapping("/import/github")
+    public ProblemBankSourceResponse problemBankSource() {
+        return problemBankSyncService.source();
+    }
+
+    @Operation(summary = "[관리자] 깃허브에서 문제 가져오기 - 레포 ref 의 zip 을 서버가 받아 problems/* 를 읽고 번들 가져오기와 같은 규칙(번호 키·overwrite·태그 생성·테스트케이스 교체)으로 넣는다. 결과에 커밋 SHA")
+    @AdminOnly
+    @PostMapping("/import/github")
+    public ProblemBankSyncResult importFromGithub(@RequestParam(defaultValue = "false") boolean overwrite, @LoginUser User user) {
+        return problemBankSyncService.importFromGithub(overwrite, user);
     }
 
     /** 문제 은행 레포(ondal-problems)의 빌드 산출물(JSON)을 관리자 화면에서 올린다 - 운영은 OIDC 세션이라 스크립트로 넣을 수 없다 */
