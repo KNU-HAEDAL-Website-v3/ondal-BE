@@ -86,6 +86,7 @@ public class EnrollmentService {
         cohort.ensureActive();
         for (String loginId : new LinkedHashSet<>(loginIds)) { // 중복 loginId 제거, 입력 순서 유지
             User user = userService.findOrCreateMember(loginId);
+            user.approve(); // 배정 = "우리 교육생" 확인 - 승인 대기 계정이면 따로 승인 버튼을 누르지 않아도 열린다 (docs 결정 10)
             enrollmentRepository.findByCohortIdAndUserId(cohortId, user.getId())
                     .ifPresentOrElse(
                             existing -> {
@@ -106,6 +107,7 @@ public class EnrollmentService {
         Cohort cohort = requireCohort(cohortId);
         cohort.ensureActive();
         User user = userService.findOrCreateMember(loginId);
+        user.approve(); // 운영진 지정도 배정이다 - 승인 대기 계정이면 함께 승인 (docs 결정 10)
         Enrollment enrollment = enrollmentRepository.findByCohortIdAndUserId(cohortId, user.getId())
                 .orElseGet(() -> enrollmentRepository.save(Enrollment.create(cohort, user, EnrollmentRole.OPERATOR)));
         if (!enrollment.isOperator()) {

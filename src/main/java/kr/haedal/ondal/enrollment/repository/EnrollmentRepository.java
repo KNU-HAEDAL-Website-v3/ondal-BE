@@ -36,4 +36,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     /** 여러 분반의 응답(운영진 목록·수강생 수·내 역할)을 쿼리 1번으로 조립하기 위한 조회 */
     @Query("select e from Enrollment e join fetch e.user where e.cohort.id in :cohortIds")
     List<Enrollment> findAllByCohortIdInWithUser(@Param("cohortIds") Collection<Long> cohortIds);
+
+    /** 부원 목록(UserService.directory) 조립용 - 소속 전부를 분반과 함께 한 번에 (동아리 규모라 전부 읽어도 작다) */
+    @Query("select e from Enrollment e join fetch e.cohort join fetch e.user")
+    List<Enrollment> findAllWithCohort();
 }

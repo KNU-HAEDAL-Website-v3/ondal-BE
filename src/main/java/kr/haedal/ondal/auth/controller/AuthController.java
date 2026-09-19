@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpSession;
 import kr.haedal.ondal.auth.LoginUser;
 import kr.haedal.ondal.auth.SessionConst;
 import kr.haedal.ondal.auth.authorization.LoginOnly;
+import kr.haedal.ondal.auth.authorization.PendingAllowed;
 import kr.haedal.ondal.auth.dto.LogoutResponse;
 import kr.haedal.ondal.auth.service.OidcAuthService;
 import kr.haedal.ondal.user.dto.UserResponse;
@@ -34,9 +35,10 @@ public class AuthController {
         this.oidcAuthService = oidcAuthService;
     }
 
-    /** 프론트가 앱 시작 시 호출해서 로그인 상태·역할을 확인하는 API */
-    @Operation(summary = "내 정보 (로그인 상태·전역 역할 확인)")
+    /** 프론트가 앱 시작 시 호출해서 로그인 상태·역할·승인 상태를 확인하는 API. 승인 대기 계정도 부를 수 있는 유일한 로그인 API (@PendingAllowed) */
+    @Operation(summary = "내 정보 (로그인 상태·전역 역할·승인 상태 확인) - 승인 대기(PENDING) 계정도 호출 가능")
     @LoginOnly
+    @PendingAllowed
     @GetMapping("/me")
     public UserResponse me(@LoginUser User user) {
         // 연관관계 없는 단일 엔티티라 컨트롤러에서 바로 DTO로 바꾼다 - auth만의 예외.

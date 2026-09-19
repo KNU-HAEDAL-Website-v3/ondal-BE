@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpSession;
 import kr.haedal.ondal.auth.SessionConst;
 import kr.haedal.ondal.common.error.ForbiddenException;
 import kr.haedal.ondal.common.error.InvalidInputException;
+import kr.haedal.ondal.common.error.PendingApprovalException;
 import kr.haedal.ondal.common.error.UnauthenticatedException;
 import kr.haedal.ondal.user.entity.User;
 import kr.haedal.ondal.user.repository.UserRepository;
@@ -62,6 +63,12 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
         Long cohortId = effective instanceof CohortRole ? readCohortId(request, handlerMethod) : null;
 
         User user = loadLoginUser(request);
+
+        // 승인 대기(PENDING) 계정은 자기 상태를 확인하는 API(@PendingAllowed - /api/auth/me)만 쓸 수 있다.
+        // 판정 순서에서 ①로그인 다음, ②③④역할 전에 놓이는 문턱 - 역할이 있어도(예: 선등록 없이 로그인한 임원) 승인 전엔 막힌다 (docs 결정 10)
+        if (user.isPending() && !handlerMethod.hasMethodAnnotation(PendingAllowed.class)) {
+            throw new PendingApprovalException();
+        }
 
         if (effective instanceof LoginOnly) {
             return true;

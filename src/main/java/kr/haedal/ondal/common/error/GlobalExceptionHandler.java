@@ -39,6 +39,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("FORBIDDEN", "권한이 없습니다."));
     }
 
+    /** 승인 대기 계정 - 403 이지만 코드를 나눠 FE 가 홈 리다이렉트 대신 "승인 대기" 화면을 보이게 한다 (docs 결정 10) */
+    @ExceptionHandler(PendingApprovalException.class)
+    public ResponseEntity<ErrorResponse> handlePendingApproval(PendingApprovalException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("USER_PENDING", "운영진 승인을 기다리는 계정이에요. 승인이 끝나면 이용할 수 있어요."));
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
