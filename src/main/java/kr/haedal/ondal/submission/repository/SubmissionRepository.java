@@ -61,6 +61,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     boolean existsByProblemId(Long problemId);
 
+    /** 마이페이지 활동 요약 (MyStatsService) - 본인 제출 건수를 과제/연습으로 나눠 센다 (재제출 포함) */
+    long countByUserIdAndAssignmentIsNotNull(Long userId);
+
+    long countByUserIdAndProblemIsNotNull(Long userId);
+
     /**
      * 이 문제로 채점되는 제출 전부 - 과제로 낸 것(assignment.problem)과 HOJ 연습(problem) 양쪽.
      * 테스트케이스를 고치면 이 모두가 재채점 대상이다 - 채점 기준은 문제 하나를 공유하기 때문.
