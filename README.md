@@ -88,8 +88,10 @@ curl -i localhost:8080/api/auth/me
 ```bash
 sudo docker compose exec db psql -U ondal -d ondal \
   -c "UPDATE users SET global_role = 'ADMIN' WHERE login_id = '<loginId>';"
-  - 유지보수 팀(동아리 임원 아님)은 `'MAINTAINER'` - 권한은 ADMIN 과 같고 화면 표시만 "관리자" (docs 결정 12)
 ```
+
+- 유지보수 팀(동아리 임원 아님)은 `'MAINTAINER'` - 권한은 ADMIN 과 같고 화면 표시만 "관리자" (docs 결정 12)
+- 확인: `sudo docker compose exec db psql -U ondal -d ondal -c "SELECT id, login_id, name, global_role, status FROM users ORDER BY id;"`
 
 3. 로그아웃 후 재로그인 → `/api/auth/me` 응답의 `globalRole`이 `ADMIN`
 
