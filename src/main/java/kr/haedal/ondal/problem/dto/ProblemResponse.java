@@ -33,6 +33,12 @@ public record ProblemResponse(
         Instant updatedAt,
 
         @Schema(description = "요청자가 이 문제를 고칠 수 있는가 - 프론트는 이 값만 보고 수정·삭제 버튼을 분기한다")
-        boolean canEdit
+        boolean canEdit,
+
+        @Schema(description = "난이도 1~25 - 표기 \"대분류-소분류\" 는 FE 몫. null = 미지정")
+        Integer difficulty,
+
+        @Schema(description = "제출 허용 언어 - 빈 배열이면 제한 없음. 제출 폼의 언어 선택지를 이 목록으로 좁힌다")
+        List<String> allowedLanguages
 ) {
 }

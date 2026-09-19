@@ -17,6 +17,7 @@ import kr.haedal.ondal.user.entity.User;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -52,6 +53,17 @@ public class Problem {
 
     @Column(name = "memory_limit_mb")
     private Integer memoryLimitMb;
+
+    /**
+     * 난이도 1~25 - 표기는 "대분류-소분류"(1-1 ~ 5-5), 저장은 (대분류-1)*5+소분류 하나 (V9, 2026-09-19 PM).
+     * 백준 티어 대응: 브론즈 = 1-x, 실버 = 2-x, 골드 = 3-x. null = 미지정
+     */
+    @Column
+    private Integer difficulty;
+
+    /** 제출 허용 언어 - 쉼표 구분(ondal.judge.languages 키), null = 제한 없음. 언어별 특화 문제에만 건다 (V9) */
+    @Column(name = "allowed_languages", length = 200)
+    private String allowedLanguages;
 
     /** 출제자 - V7 로 이관된 기존 문제는 작성자를 알 수 없어 null */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -120,6 +132,23 @@ public class Problem {
         this.updatedAt = Instant.now();
     }
 
+    /** 난이도·허용 언어 - 검증(범위·지원 언어)은 서비스가 끝낸 값. 언어 목록이 비면 제한 없음(null) */
+    public void updateBank(Integer difficulty, List<String> allowedLanguages) {
+        this.difficulty = difficulty;
+        this.allowedLanguages = (allowedLanguages == null || allowedLanguages.isEmpty()) ? null : String.join(",", allowedLanguages);
+        this.updatedAt = Instant.now();
+    }
+
+    /** 허용 언어 목록 - 제한 없으면 빈 목록 */
+    public List<String> allowedLanguageList() {
+        return allowedLanguages == null ? List.of() : List.of(allowedLanguages.split(","));
+    }
+
+    /** 이 언어로 제출해도 되는가 - 제한이 없으면 항상 true */
+    public boolean allowsLanguage(String language) {
+        return allowedLanguages == null || (language != null && allowedLanguageList().contains(language));
+    }
+
     public Long getId() { return id; }
     public Integer getProblemNo() { return problemNo; }
     public String getTitle() { return title; }
@@ -130,4 +159,5 @@ public class Problem {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Set<Tag> getTags() { return tags; }
+    public Integer getDifficulty() { return difficulty; }
 }

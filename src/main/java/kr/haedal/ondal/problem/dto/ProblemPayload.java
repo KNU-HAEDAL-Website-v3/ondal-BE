@@ -1,6 +1,7 @@
 package kr.haedal.ondal.problem.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -21,11 +22,20 @@ public record ProblemPayload(
         @Size(max = 200, message = "문제 제목은 200자 이하여야 합니다.")
         String title,
 
-        @Schema(description = "문제 본문 (선택)")
+        @Schema(description = "문제 본문 (선택, 마크다운)")
         @Size(max = 10000, message = "문제 본문은 10000자 이하여야 합니다.")
         String description,
 
         @Schema(description = "붙일 태그 id 목록 - 통째 교체(빈 목록이면 태그 없음). 없는 id 가 섞이면 400")
-        List<Long> tagIds
+        List<Long> tagIds,
+
+        @Schema(description = "난이도 1~25 ((대분류-1)*5+소분류, 표기 1-1 ~ 5-5). null = 미지정", example = "7")
+        @Min(value = 1, message = "난이도는 1 이상이어야 합니다.")
+        @Max(value = 25, message = "난이도는 25 이하여야 합니다.")
+        Integer difficulty,
+
+        @Schema(description = "제출 허용 언어 (서버 지원 언어 이름 그대로 - C, C++, Java, Python 3, JavaScript, TypeScript). 비우면 제한 없음. 지원하지 않는 이름이 섞이면 400", example = "[\"C\"]")
+        @Size(max = 10, message = "허용 언어는 10개 이하여야 합니다.")
+        List<String> allowedLanguages
 ) {
 }

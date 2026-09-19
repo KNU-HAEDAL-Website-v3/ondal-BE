@@ -23,6 +23,12 @@ public record ProblemSummary(
         int assignedCount,
 
         @Schema(description = "요청자가 이 문제를 맞힌 적이 있는가 - 과제 제출·HOJ 연습 제출 어느 쪽이든")
-        boolean solved
+        boolean solved,
+
+        @Schema(description = "난이도 1~25 - 표기 \"대분류-소분류\" 는 FE 몫 ((n-1)/5+1 - (n-1)%5+1). null = 미지정")
+        Integer difficulty,
+
+        @Schema(description = "제출 허용 언어 - 빈 배열이면 제한 없음")
+        List<String> allowedLanguages
 ) {
 }

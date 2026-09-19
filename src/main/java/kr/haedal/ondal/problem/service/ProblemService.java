@@ -92,7 +92,9 @@ public class ProblemService {
                         tagResponses(problem),
                         judged.contains(problem.getId()),
                         assigned.getOrDefault(problem.getId(), 0L).intValue(),
-                        solved.contains(problem.getId())))
+                        solved.contains(problem.getId()),
+                        problem.getDifficulty(),
+                        problem.allowedLanguageList()))
                 .toList();
     }
 
@@ -105,6 +107,7 @@ public class ProblemService {
         Integer problemNo = resolveProblemNoForCreate(payload.problemNo());
         Problem problem = Problem.create(problemNo, payload.title().strip(), payload.description(), null, null, author);
         problem.replaceTags(resolveTags(payload.tagIds()));
+        problem.updateBank(payload.difficulty(), normalizeLanguages(payload.allowedLanguages()));
         return toResponse(problemRepository.save(problem), author);
     }
 
@@ -119,6 +122,7 @@ public class ProblemService {
         }
         problem.update(payload.title().strip(), payload.description());
         problem.replaceTags(resolveTags(payload.tagIds()));
+        problem.updateBank(payload.difficulty(), normalizeLanguages(payload.allowedLanguages()));
         return toResponse(problem, viewer);
     }
 
@@ -203,6 +207,31 @@ public class ProblemService {
                 problem.getCreatedBy() == null ? null : problem.getCreatedBy().getName(),
                 problem.getCreatedAt(),
                 problem.getUpdatedAt(),
-                cohortAuthorizer.isOperatorAnywhere(viewer));
+                cohortAuthorizer.isOperatorAnywhere(viewer),
+                problem.getDifficulty(),
+                problem.allowedLanguageList());
+    }
+
+    /**
+     * 허용 언어 정리 - 공백·중복 제거, 서버 지원 언어(ondal.judge.languages)가 아니면 400. 빈 목록 = 제한 없음.
+     * 언어 이름은 FE 셀렉트·채점 설정과 같은 문자열(C, C++, Java, Python 3, JavaScript, TypeScript)이다
+     */
+    List<String> normalizeLanguages(List<String> requested) {
+        List<String> result = new java.util.ArrayList<>();
+        if (requested == null) {
+            return result;
+        }
+        for (String raw : requested) {
+            String language = raw == null ? "" : raw.strip();
+            if (language.isEmpty() || result.contains(language)) {
+                continue;
+            }
+            if (!judgeProperties.supportsLanguage(language)) {
+                List<String> supported = judgeProperties.languages() == null ? List.of() : List.copyOf(judgeProperties.languages().keySet());
+                throw new InvalidInputException("지원하지 않는 언어입니다: " + language + " (지원: " + String.join(", ", supported) + ")");
+            }
+            result.add(language);
+        }
+        return result;
     }
 }

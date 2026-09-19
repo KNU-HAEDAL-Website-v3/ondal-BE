@@ -219,9 +219,19 @@ public class JudgeService {
 
     // ---- 제출(#18) 훅 - SubmissionService 의 트랜잭션 안에서 -------------------------------------------
 
-    /** 자동 채점 문제의 CODE 제출은 지원 언어여야 한다 → 400. 케이스 없는 문제·FILE·LINK 는 그대로 */
+    /**
+     * CODE 제출 검증 - FILE·LINK 는 그대로.
+     * ① 문제에 허용 언어가 걸려 있으면(V9, 언어별 특화 문제) 그 언어여야 한다 → 400. 테스트케이스 유무와 무관 - 과제 제출·HOJ 연습 제출 둘 다
+     * ② 자동 채점 문제(케이스 있음)면 지원 언어여야 한다 → 400
+     */
     public void validateSubmittable(Problem problem, SubmissionType type, String language) {
-        if (type != SubmissionType.CODE || testCaseRepository.countByProblemId(problem.getId()) == 0) {
+        if (type != SubmissionType.CODE) {
+            return;
+        }
+        if (!problem.allowsLanguage(language)) {
+            throw new InvalidInputException("이 문제는 " + String.join(", ", problem.allowedLanguageList()) + " 로만 제출할 수 있습니다.");
+        }
+        if (testCaseRepository.countByProblemId(problem.getId()) == 0) {
             return;
         }
         if (!properties.supportsLanguage(language)) {
