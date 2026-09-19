@@ -4,11 +4,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kr.haedal.ondal.auth.LoginUser;
+import kr.haedal.ondal.auth.authorization.AdminOnly;
 import kr.haedal.ondal.auth.authorization.LoginOnly;
 import kr.haedal.ondal.auth.authorization.OperatorAnywhere;
+import kr.haedal.ondal.problem.dto.ProblemImportRequest;
+import kr.haedal.ondal.problem.dto.ProblemImportResult;
 import kr.haedal.ondal.problem.dto.ProblemPayload;
 import kr.haedal.ondal.problem.dto.ProblemResponse;
 import kr.haedal.ondal.problem.dto.ProblemSummary;
+import kr.haedal.ondal.problem.service.ProblemImportService;
 import kr.haedal.ondal.problem.service.ProblemService;
 import kr.haedal.ondal.user.entity.User;
 import org.springframework.http.HttpStatus;
@@ -37,9 +41,19 @@ import java.util.List;
 public class ProblemController {
 
     private final ProblemService problemService;
+    private final ProblemImportService problemImportService;
 
-    public ProblemController(ProblemService problemService) {
+    public ProblemController(ProblemService problemService, ProblemImportService problemImportService) {
         this.problemService = problemService;
+        this.problemImportService = problemImportService;
+    }
+
+    /** 문제 은행 레포(ondal-problems)의 빌드 산출물(JSON)을 관리자 화면에서 올린다 - 운영은 OIDC 세션이라 스크립트로 넣을 수 없다 */
+    @Operation(summary = "[관리자] 문제 번들 가져오기 - 번호가 키. 같은 번호는 overwrite 에 따라 덮어쓰기/건너뛰기, 태그 이름은 없으면 생성, 테스트케이스는 통째 교체(재채점 없음). 하나라도 실패하면 전부 되돌림")
+    @AdminOnly
+    @PostMapping("/import")
+    public ProblemImportResult importBundle(@RequestBody @Valid ProblemImportRequest request, @LoginUser User user) {
+        return problemImportService.importBundle(request, user);
     }
 
     @Operation(summary = "문제 목록 - 번호 오름차순. tagIds 를 주면 그 태그를 모두 가진 문제만(AND)")
