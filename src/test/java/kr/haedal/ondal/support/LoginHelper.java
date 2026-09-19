@@ -39,6 +39,16 @@ public class LoginHelper {
         return as(adminUser());
     }
 
+    /** "maintainer" MAINTAINER(관리자) 계정을 (없으면 만들고) 로그인된 세션으로 - 해구르르와 같은 권한, 표시만 다르다 (결정 12) */
+    public MockHttpSession maintainer() {
+        return as(maintainerUser());
+    }
+
+    public User maintainerUser() {
+        return userRepository.findByLoginId("maintainer")
+                .orElseGet(() -> userRepository.save(User.maintainer("maintainer", "유지보수")));
+    }
+
     public User memberUser(String loginId) {
         return userRepository.findByLoginId(loginId)
                 .orElseGet(() -> userRepository.save(User.member(loginId, loginId)));
