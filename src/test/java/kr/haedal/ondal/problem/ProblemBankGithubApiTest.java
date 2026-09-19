@@ -41,6 +41,7 @@ class ProblemBankGithubApiTest extends ApiTestSupport {
         registry.add("ondal.problem-bank.github.repo", () -> REPO);
         registry.add("ondal.problem-bank.github.ref", () -> "main");
         registry.add("ondal.problem-bank.github.token", () -> FakeGithub.TOKEN);
+        registry.add("ondal.problem-bank.async", () -> "false");   // 같은 스레드에서 끝까지 - POST 응답이 곧 최종 상태
     }
 
     @BeforeEach
@@ -67,14 +68,26 @@ class ProblemBankGithubApiTest extends ApiTestSupport {
     @Test
     void 레포의_problems_폴더를_읽어_문제_태그_테스트케이스를_만든다() throws Exception {
         mockMvc.perform(post("/api/problems/import/github").session(login.admin()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.state").value("DONE"))
+                .andExpect(jsonPath("$.processed").value(2))
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.fetchMs").isNumber())
+                .andExpect(jsonPath("$.importMs").isNumber())
+                .andExpect(jsonPath("$.requestedBy").value("관리자"))
+                .andExpect(jsonPath("$.outcome.repo").value(REPO))
+                .andExpect(jsonPath("$.outcome.commitSha").value(GITHUB.sha))
+                .andExpect(jsonPath("$.outcome.problemsInRepo").value(2))
+                .andExpect(jsonPath("$.outcome.result.created").value(2))
+                .andExpect(jsonPath("$.outcome.result.updated").value(0))
+                .andExpect(jsonPath("$.outcome.result.skipped").value(0))
+                .andExpect(jsonPath("$.outcome.result.createdTags", containsInAnyOrder("구현", "사칙연산", "C언어")));
+
+        // 화면이 폴링하는 상태 조회도 같은 내용
+        mockMvc.perform(get("/api/problems/import/github/status").session(login.admin()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.repo").value(REPO))
-                .andExpect(jsonPath("$.commitSha").value(GITHUB.sha))
-                .andExpect(jsonPath("$.problemsInRepo").value(2))
-                .andExpect(jsonPath("$.result.created").value(2))
-                .andExpect(jsonPath("$.result.updated").value(0))
-                .andExpect(jsonPath("$.result.skipped").value(0))
-                .andExpect(jsonPath("$.result.createdTags", containsInAnyOrder("구현", "사칙연산", "C언어")));
+                .andExpect(jsonPath("$.state").value("DONE"))
+                .andExpect(jsonPath("$.outcome.commitSha").value(GITHUB.sha));
 
         // 토큰은 GitHub API 에만 - 서명된 다운로드 주소(codeload)에는 넘기지 않는다
         assertThat(GITHUB.lastAuthorization.get("commits")).isEqualTo("Bearer " + FakeGithub.TOKEN);
@@ -112,37 +125,40 @@ class ProblemBankGithubApiTest extends ApiTestSupport {
     @Test
     void 다시_가져오면_같은_번호는_건너뛰고_overwrite_면_갱신한다() throws Exception {
         mockMvc.perform(post("/api/problems/import/github").session(login.admin()))
-                .andExpect(status().isOk());
+                .andExpect(status().isAccepted());
 
         mockMvc.perform(post("/api/problems/import/github").session(login.admin()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.created").value(0))
-                .andExpect(jsonPath("$.result.skipped").value(2));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.outcome.result.created").value(0))
+                .andExpect(jsonPath("$.outcome.result.skipped").value(2));
 
         mockMvc.perform(post("/api/problems/import/github").param("overwrite", "true").session(login.admin()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.updated").value(2))
-                .andExpect(jsonPath("$.result.skipped").value(0));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.overwrite").value(true))
+                .andExpect(jsonPath("$.outcome.result.updated").value(2))
+                .andExpect(jsonPath("$.outcome.result.skipped").value(0));
     }
 
     @Test
-    void 토큰이_거부되면_502_와_원인_안내() throws Exception {
+    void 토큰이_거부되면_FAILED_상태에_원인_안내() throws Exception {
         GITHUB.nextStatus = 401;
         mockMvc.perform(post("/api/problems/import/github").session(login.admin()))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.code").value("PROBLEM_BANK_FETCH_FAILED"))
-                .andExpect(jsonPath("$.message", containsString("토큰")));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.state").value("FAILED"))
+                .andExpect(jsonPath("$.error.code").value("PROBLEM_BANK_FETCH_FAILED"))
+                .andExpect(jsonPath("$.error.message", containsString("토큰")));
 
         mockMvc.perform(get("/api/problems").session(login.admin()))
                 .andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test
-    void 레포에_문제_폴더가_없으면_502() throws Exception {
+    void 레포에_문제_폴더가_없으면_FAILED() throws Exception {
         GITHUB.zip = zipOf(Map.of("README.md", "빈 레포", "tools/build.py", "print()"));
         mockMvc.perform(post("/api/problems/import/github").session(login.admin()))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.message", containsString("meta.json")));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.state").value("FAILED"))
+                .andExpect(jsonPath("$.error.message", containsString("meta.json")));
     }
 
     @Test
@@ -151,9 +167,10 @@ class ProblemBankGithubApiTest extends ApiTestSupport {
         files.put("problems/2002-c-only/meta.json", "{\"problemNo\": 2002, \"title\": \"\", \"tags\": [\"C언어\"]}");
         GITHUB.zip = zipOf(files);
         mockMvc.perform(post("/api/problems/import/github").session(login.admin()))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
-                .andExpect(jsonPath("$.message", containsString("2002")));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.state").value("FAILED"))
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.error.message", containsString("2002")));
     }
 
     // ---- 레포 흉내 - ondal-problems 의 폴더 규칙 ---------------------------------------------------
