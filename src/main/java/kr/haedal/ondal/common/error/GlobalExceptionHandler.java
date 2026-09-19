@@ -72,6 +72,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("COHORT_ARCHIVED", e.getMessage()));
     }
 
+    /** 문제 은행 레포(GitHub) 가져오기 실패 - 토큰·레포·네트워크·zip 형식. 메시지에 원인을 담는다 (토큰 값은 없음) */
+    @ExceptionHandler(ProblemBankFetchException.class)
+    public ResponseEntity<ErrorResponse> handleProblemBankFetch(ProblemBankFetchException e) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ErrorResponse("PROBLEM_BANK_FETCH_FAILED", e.getMessage()));
+    }
+
     @ExceptionHandler(InvalidInputException.class)
     public ResponseEntity<ErrorResponse> handleInvalidInput(InvalidInputException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

@@ -49,6 +49,14 @@ ondal:
       poll-interval-ms: 1000
       poll-timeout-ms: 60000
       max-attempts: 8              # 일시 장애 재시도 - 2s,4s,...256s 백오프 뒤 JUDGE_ERROR
+  problem-bank:
+    # 문제 은행 레포(비공개 ondal-problems)에서 관리자 화면 "깃허브에서 가져오기"로 직접 가져온다 (docs 결정 11 보완)
+    # 서버가 GitHub API 로 ref 의 zip 을 받아 problems/*/{meta.json, problem.md, tests/} 를 읽는다 - 로컬 빌드(bank.json) 불필요
+    github:
+      api-url: https://api.github.com
+      repo: KNU-HAEDAL-Website-v3/ondal-problems
+      ref: main
+      token: ""                  # 비우면 미설정 - 화면은 파일 업로드만. prod 는 .env PROBLEM_BANK_GITHUB_TOKEN (그 레포 Contents 읽기 전용 PAT)
   auth:
     # stub: loginId 만 보내면 통과 (local·test) / oidc: 홈페이지 Keycloak 로그인 (prod - 아래 prod 절에서 지정)
     # prod 프로필에서 stub 이면 StubAuthService 가 기동을 막는다 - 설정 실수로 스텁이 운영에 올라가는 사고 방지
@@ -100,6 +108,11 @@ ondal:
     judge0:
       url: ${JUDGE0_URL:}
       token: ${JUDGE0_TOKEN:}
+  problem-bank:
+    github:
+      repo: ${PROBLEM_BANK_REPO:KNU-HAEDAL-Website-v3/ondal-problems}
+      ref: ${PROBLEM_BANK_REF:main}
+      token: ${PROBLEM_BANK_GITHUB_TOKEN:}   # 비어 있으면 "깃허브에서 가져오기" 비활성 - 파일 업로드는 계속 가능
   cors:
     # FE 커스텀 도메인들이 기본값(Ondal + HOJ). pages.dev 미리보기 오리진은 세션 쿠키(lax)가 실리지 않아 로그인 불가 - 필요 시 .env에서 쉼표로 추가(공백 금지)
     allowed-origins: ${CORS_ORIGINS:https://ondal.haedal-sos-man-in-the-mirror.com,https://oj.haedal-sos-man-in-the-mirror.com}
