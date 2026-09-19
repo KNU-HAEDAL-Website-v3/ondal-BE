@@ -8,6 +8,7 @@
 # 실행:          docker compose up -d --build
 # 재배포:        git pull 후 위 명령 다시 실행 (.env만 바꿨을 때도 같은 명령 - 컨테이너를 재생성해야 반영됨)
 # 로그:          docker compose logs -f ondal-be
+# DB 접속:       DBeaver 등 → SSH 터널(192.168.0.3) → localhost:15432 (db 서비스 ports 주석 참고, 비밀번호는 .env DB_PASSWORD)
 # 상세 절차:     README.md "운영 배포" 절
 
 services:
@@ -38,7 +39,8 @@ services:
       POSTGRES_DB: ondal
       POSTGRES_USER: ondal
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    # ports 없음 - DB는 app 컨테이너의 내부 네트워크에서만 접근, 외부 비공개
+    ports:
+      - "127.0.0.1:15432:5432"   # 서버 루프백 전용 - DBeaver 등은 SSH 터널로 localhost:15432 접속. LAN·외부 노출 없음, app 은 여전히 내부 네트워크(db:5432) 사용
     volumes:
       - ondal-db-data:/var/lib/postgresql/data
     healthcheck:
