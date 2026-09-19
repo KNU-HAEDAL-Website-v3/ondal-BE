@@ -62,7 +62,7 @@ curl -i localhost:8080/api/auth/me
   - nginx 설정: `/opt/haedal/0-haedal-infra/nginx/conf.d/ondal-api.conf` - `client_max_body_size 15m`(zip 10MB + multipart 여유), `X-Forwarded-Proto https` 고정(nginx는 :80으로 받으므로 `$scheme`을 쓰면 http가 됨)
   - TLS 종단·HTTPS 강제(Always Use HTTPS)는 Cloudflare 대시보드 - 앱은 HTTP만 받고 `forward-headers-strategy: framework`로 https 를 인지
 - 인증: 홈페이지 Keycloak 로그인(OIDC, `ondal.auth.mode=oidc`) - BE 가 공개 주소(`auth.` 도메인, Cloudflare 경유)로 Discovery·토큰 교환·JWKS 를 호출. 설정은 `.env` 의 `OIDC_*`, 상세는 아래 "인증" 절
-- DB: 같은 compose의 `db` 컨테이너(PostgreSQL 16), 볼륨 `ondal-db-data` - 호스트 포트 미노출
+- DB: 같은 compose의 `db` 컨테이너(PostgreSQL 16), 볼륨 `ondal-db-data` - 서버 루프백 `127.0.0.1:15432`에만 열림(LAN·외부 미노출). DBeaver 등 도구는 SSH 터널(`192.168.0.3`) → Host `localhost`, Port `15432`, DB·계정 `ondal`, 비밀번호는 `.env`의 `DB_PASSWORD`
 - 제출 파일: 볼륨 `ondal-uploads` → 컨테이너 `/app/uploads`
 - 인프라 소유: `0-haedal-infra`는 인프라 담당 관리 - nginx 설정 변경은 협의 후, 서버 안내는 `/opt/haedal/SERVER-GUIDE.md`
 
