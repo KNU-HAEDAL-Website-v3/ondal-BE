@@ -377,6 +377,46 @@ class OidcAuthApiTest extends ApiTestSupport {
     }
 
     /** nonce + username(+ name) - 실제 Keycloak 이 profile 스코프로 넣는 클레임 이름 그대로 */
+    // ---- 프로필 사진 (docs 결정 14) ----------------------------------------------------------
+
+    @Test
+    void picture_클레임은_avatarUrl_로_저장_없으면_기존_값_유지_https_아니면_무시() throws Exception {
+        String photo = "https://lh3.googleusercontent.com/a/photo=s96-c";
+
+        // 1) picture 있음 → 저장
+        Started first = startLogin("/cohorts/1");
+        Map<String, Object> withPicture = claims(first.nonce(), "pic", "사진왕");
+        withPicture.put("picture", photo);
+        IDP.expectExchange("code-p1", first.codeChallenge(), withPicture);
+        MockHttpSession s1 = (MockHttpSession) callback(first.session(), "code-p1", first.state()).getRequest().getSession(false);
+        mockMvc.perform(get("/api/auth/me").session(s1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.avatarUrl").value(photo));
+
+        // 2) 다음 로그인에 picture 없음(매퍼가 빠진 경우) → 기존 값 유지
+        Started second = startLogin("/cohorts/1");
+        IDP.expectExchange("code-p2", second.codeChallenge(), claims(second.nonce(), "pic", "사진왕"));
+        MockHttpSession s2 = (MockHttpSession) callback(second.session(), "code-p2", second.state()).getRequest().getSession(false);
+        mockMvc.perform(get("/api/auth/me").session(s2))
+                .andExpect(jsonPath("$.avatarUrl").value(photo));
+
+        // 3) https 가 아닌 값은 무시 - 화면이 <img src> 로 바로 쓴다
+        Started third = startLogin("/cohorts/1");
+        Map<String, Object> bad = claims(third.nonce(), "pic", "사진왕");
+        bad.put("picture", "javascript:alert(1)");
+        IDP.expectExchange("code-p3", third.codeChallenge(), bad);
+        MockHttpSession s3 = (MockHttpSession) callback(third.session(), "code-p3", third.state()).getRequest().getSession(false);
+        mockMvc.perform(get("/api/auth/me").session(s3))
+                .andExpect(jsonPath("$.avatarUrl").value(photo));
+
+        // 4) 사진이 없는 계정은 null (화면은 이름 첫 글자)
+        Started fourth = startLogin("/cohorts/1");
+        IDP.expectExchange("code-p4", fourth.codeChallenge(), claims(fourth.nonce(), "nopic", "무사진"));
+        MockHttpSession s4 = (MockHttpSession) callback(fourth.session(), "code-p4", fourth.state()).getRequest().getSession(false);
+        mockMvc.perform(get("/api/auth/me").session(s4))
+                .andExpect(jsonPath("$.avatarUrl").value(nullValue()));
+    }
+
     private static Map<String, Object> claims(String nonce, String loginId, String name) {
         Map<String, Object> claims = new LinkedHashMap<>();
         claims.put("nonce", nonce);

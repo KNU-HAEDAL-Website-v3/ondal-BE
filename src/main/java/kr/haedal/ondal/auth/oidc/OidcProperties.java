@@ -33,7 +33,9 @@ public record OidcProperties(
         /** loginId 로 쓸 ID 토큰 클레임 - Keycloak username. 홈페이지 정책상 다른 클레임을 써야 하면 여기만 바꾼다 */
         @DefaultValue("preferred_username") String loginIdClaim,
         /** 표시 이름으로 쓸 클레임. 없으면 loginId 로 채운다 */
-        @DefaultValue("name") String nameClaim
+        @DefaultValue("name") String nameClaim,
+        /** 프로필 사진 주소 클레임(구글 IdP 의 picture). Keycloak 에 매퍼가 없으면 클레임이 없고, 그때는 사진 없이 동작한다 */
+        @DefaultValue("picture") String pictureClaim
 ) {
 
     /** 끝 슬래시를 뗀 issuer - Discovery 주소 조립과 iss 비교에 같은 형태를 쓴다 */

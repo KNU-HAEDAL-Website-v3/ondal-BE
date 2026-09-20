@@ -116,9 +116,12 @@ public class OidcAuthService {
                 idToken.getClaimAsString("given_name"),
                 idToken.getClaimAsString("family_name"));
 
+        // 프로필 사진(구글) - Keycloak 이 picture 클레임을 실어 줄 때만. 없으면 null → 기존 값 유지 (docs 결정 14)
+        String avatarUrl = idToken.getClaimAsString(properties.pictureClaim());
+
         User user;
         try {
-            user = userService.syncFromIdentity(loginId, name);
+            user = userService.syncFromIdentity(loginId, name, avatarUrl);
         } catch (InvalidInputException e) {
             throw new OidcLoginException(OidcLoginError.INVALID_ACCOUNT, e.getMessage(), e);
         }
