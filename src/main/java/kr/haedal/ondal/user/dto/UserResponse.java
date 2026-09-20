@@ -16,9 +16,10 @@ public record UserResponse(
         String loginId,
         String name,
         GlobalRole globalRole,
-        @Schema(description = "PENDING = 승인 대기(운영진 승인 전 - 다른 API 는 403 USER_PENDING) / ACTIVE = 이용 가능") UserStatus status
+        @Schema(description = "PENDING = 승인 대기(운영진 승인 전 - 다른 API 는 403 USER_PENDING) / ACTIVE = 이용 가능") UserStatus status,
+        @Schema(description = "프로필 사진 주소 - 홈페이지(구글) 프로필, 로그인 때 ID 토큰 picture 클레임으로 받음. 없으면 null (화면은 이름 첫 글자)") String avatarUrl
 ) {
     public static UserResponse from(User user) {
-        return new UserResponse(user.getId(), user.getLoginId(), user.getName(), user.getGlobalRole(), user.getStatus());
+        return new UserResponse(user.getId(), user.getLoginId(), user.getName(), user.getGlobalRole(), user.getStatus(), user.getAvatarUrl());
     }
 }

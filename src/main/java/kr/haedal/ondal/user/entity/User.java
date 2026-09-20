@@ -43,6 +43,10 @@ public class User {
     @Column(nullable = false, updatable = false)
     private Instant createdAt; // 저장은 UTC(Instant), 표시는 프론트에서 KST (docs 결정)
 
+    /** 프로필 사진 주소 - 홈페이지(구글) 프로필, 로그인 때 ID 토큰 picture 클레임으로 받아 적는다. V12. null 이면 화면은 이름 첫 글자 (docs 결정 14) */
+    @Column(length = 500)
+    private String avatarUrl;
+
     protected User() {
         // JPA 스펙이 요구하는 기본 생성자. 외부에서 못 쓰게 protected.
     }
@@ -102,10 +106,16 @@ public class User {
         this.name = name;
     }
 
+    /** 홈페이지가 알려준 프로필 사진 주소로 맞춘다 - 로그인 동기화 전용. 클레임이 없으면 호출하지 않아 기존 값이 남는다 */
+    public void updateAvatar(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
     public Long getId() { return id; }
     public String getLoginId() { return loginId; }
     public String getName() { return name; }
     public GlobalRole getGlobalRole() { return globalRole; }
     public UserStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
+    public String getAvatarUrl() { return avatarUrl; }
 }

@@ -52,6 +52,14 @@ public class UserService {
      * 처음 보는 계정이 PENDING 인 이유(docs 결정 10): 로그인만으로는 부원인지 알 수 없다 - 운영진 이상이 승인하거나 분반에 배정해야 열린다.
      */
     public User syncFromIdentity(String loginId, String nameOrNull) {
+        return syncFromIdentity(loginId, nameOrNull, null);
+    }
+
+    /**
+     * avatarUrlOrNull: ID 토큰 picture 클레임(구글 프로필 사진). 있으면 매 로그인마다 덮어쓰고(사진을 바꾸면 따라옴), 없으면 기존 값을 그대로 둔다.
+     * https:// 로 시작하는 500자 이하 주소만 받는다 - 화면이 <img src> 로 바로 쓰기 때문
+     */
+    public User syncFromIdentity(String loginId, String nameOrNull, String avatarUrlOrNull) {
         validateLoginId(loginId);
         String name = (nameOrNull == null || nameOrNull.isBlank()) ? loginId : nameOrNull.strip();
         if (name.length() > MAX_NAME_LENGTH) {
@@ -63,7 +71,24 @@ public class UserService {
         if (!name.equals(user.getName())) {
             user.rename(name);
         }
+        String avatarUrl = safeAvatarUrl(avatarUrlOrNull);
+        if (avatarUrl != null && !avatarUrl.equals(user.getAvatarUrl())) {
+            user.updateAvatar(avatarUrl);
+        }
         return user;
+    }
+
+    static final int MAX_AVATAR_URL_LENGTH = 500;
+
+    static String safeAvatarUrl(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String url = raw.strip();
+        if (url.isEmpty() || url.length() > MAX_AVATAR_URL_LENGTH || !url.startsWith("https://")) {
+            return null;
+        }
+        return url;
     }
 
     /** 승인 (운영진 이상, 멱등) - 없는 사용자는 404 */

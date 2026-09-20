@@ -123,6 +123,8 @@ sudo docker compose exec db psql -U ondal -d ondal \
 
 ## 인증
 
+- 프로필 사진(2026-09-20, docs 결정 14): ID 토큰 `picture` 클레임(구글 프로필)을 로그인마다 `users.avatar_url` 에 저장. Keycloak 쪽 매퍼 2개가 필요 - ① Google IdP → Mappers → Attribute Importer(claim `picture` → user attribute `picture`, sync mode force) ② 클라이언트 `ondal-be` → dedicated scope → User Attribute 매퍼(`picture` → token claim `picture`, ID token ON). 없으면 클레임이 없어 사진 없이(이름 첫 글자) 동작
+
 - 세션(HttpSession 쿠키) + 인터셉터 + `@LoginUser` - docs 결정 5. 로그인 방식만 `ondal.auth.mode` 로 갈린다 (`auth/AuthMode.java`)
 
 | 모드 | 프로필 | 로그인 | 구현 |
