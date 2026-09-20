@@ -46,6 +46,20 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("USER_PENDING", "운영진 승인을 기다리는 계정이에요. 승인이 끝나면 이용할 수 있어요."));
     }
 
+    /** 못 푼 문제의 다른 사람 풀이 - 403 이지만 코드를 나눠 FE 가 홈 리다이렉트 대신 "먼저 맞히면 볼 수 있어요" 를 보이게 한다 (docs 결정 13) */
+    @ExceptionHandler(NotSolvedException.class)
+    public ResponseEntity<ErrorResponse> handleNotSolved(NotSolvedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("NOT_SOLVED", "이 문제를 맞힌 뒤에 다른 사람의 풀이를 볼 수 있어요."));
+    }
+
+    /** 사용자별 호출 한도 초과 (내 입력으로 실행) - 메시지는 던진 쪽이 한도를 담아 준다 */
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyRequests(TooManyRequestsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ErrorResponse("TOO_MANY_REQUESTS", e.getMessage()));
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

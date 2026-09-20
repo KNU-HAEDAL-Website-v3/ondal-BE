@@ -67,7 +67,12 @@ public record ProblemImportRequest(
             @Schema(description = "테스트케이스 - 저장 순서 = 실행 순서. 없거나 비면 자동 채점 없음")
             @Size(max = 50, message = "테스트케이스는 최대 50개입니다.")
             @Valid
-            List<TestCaseRequest> testCases
+            List<TestCaseRequest> testCases,
+
+            @Schema(description = "정답 코드(참고 풀이, 선택) - 언어별 1개, 최대 6개. 배열이 있으면 통째 교체(빈 배열 = 모두 삭제), 필드가 없으면(null) 기존 것을 건드리지 않는다. 운영진 이상만 본다")
+            @Size(max = 6, message = "정답 코드는 언어별 1개, 최대 6개입니다.")
+            @Valid
+            List<ProblemSolutionPayload> solutions
     ) {
     }
 }

@@ -22,8 +22,23 @@ public record ProblemSummary(
         @Schema(description = "이 문제가 과제로 배정된 횟수 - 0이면 아직 한 번도 안 낸 문제")
         int assignedCount,
 
-        @Schema(description = "요청자가 이 문제를 맞힌 적이 있는가 - 과제 제출·HOJ 연습 제출 어느 쪽이든")
+        @Schema(description = "요청자가 이 문제를 맞힌 적이 있는가 - 과제 제출·HOJ 연습 제출 어느 쪽이든. myStatus == SOLVED 와 같다 (하위 호환)")
         boolean solved,
+
+        @Schema(description = "나의 상태 - SOLVED(맞힘) / ATTEMPTED(채점된 제출은 있으나 아직 못 풂) / NONE. 연습·과제 합산")
+        ProblemMyStatus myStatus,
+
+        @Schema(description = "이 문제를 푼 사람 수 - ACCEPTED 판정이 있는 사용자 수 (연습·과제 합산)")
+        int solvedUserCount,
+
+        @Schema(description = "채점된 제출 수 - judge_results 행 수 (연습·과제 합산)")
+        int submissionCount,
+
+        @Schema(description = "ACCEPTED 비율(%) - 소수점 버림. 채점된 제출이 0이면 null")
+        Integer acceptedRate,
+
+        @Schema(description = "요청자가 북마크했는가 - PUT/DELETE .../bookmark 로 바꾼다")
+        boolean bookmarked,
 
         @Schema(description = "난이도 1~25 - 표기 \"대분류-소분류\" 는 FE 몫 ((n-1)/5+1 - (n-1)%5+1). null = 미지정")
         Integer difficulty,

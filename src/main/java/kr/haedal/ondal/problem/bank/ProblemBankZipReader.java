@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import kr.haedal.ondal.common.error.ProblemBankFetchException;
 import kr.haedal.ondal.judge.dto.TestCaseRequest;
 import kr.haedal.ondal.problem.dto.ProblemImportRequest.ImportProblem;
+import kr.haedal.ondal.problem.dto.ProblemSolutionPayload;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
@@ -15,6 +16,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -28,14 +30,19 @@ import java.util.zip.ZipInputStream;
  * - meta.json: problemNo·title·difficulty·allowedLanguages·tags·timeLimitMs·memoryLimitMb
  * - problem.md: 본문(마크다운). CRLF → LF, 앞뒤 공백 제거
  * - tests/NN.in + NN.out 쌍 = 테스트케이스(이름순), tests/public.txt 에 적힌 NN 은 공개
- * 그 밖의 파일(gen.py·solutions/·README 등)은 무시한다. meta.json 이 없는 폴더는 문제가 아니다.
+ * - solutions/sol.<ext> = 정답 코드(참고 풀이, 운영진만 열람) - 언어는 확장자로 (SOLUTION_LANGUAGES). 모르는 확장자·빈 파일은 무시
+ * 그 밖의 파일(gen.py·README 등)은 무시한다. meta.json 이 없는 폴더는 문제가 아니다.
  */
 @Component
 public class ProblemBankZipReader {
 
     /** 문제 파일 하나의 상한 - 본문 10000자·테스트케이스 64KB 규칙보다 넉넉하게. 이보다 크면 엉뚱한 파일 */
     static final int MAX_FILE_BYTES = 2 * 1024 * 1024;
+    /** solutions/sol.<ext> 의 확장자 → 정답 코드 언어 (docs hoj/api.md 6절) - 레포 tools/build.py 와 같은 표 */
+    static final Map<String, String> SOLUTION_LANGUAGES = Map.of(
+            "py", "Python 3", "c", "C", "cpp", "C++", "cc", "C++", "java", "Java", "js", "JavaScript", "ts", "TypeScript");
     private static final String PROBLEMS_DIR = "problems/";
+    private static final String SOLUTION_PREFIX = "solutions/sol.";
 
     private final ObjectMapper objectMapper;
 
@@ -97,7 +104,8 @@ public class ProblemBankZipReader {
 
     private static boolean isProblemFile(String relative) {
         return relative.equals("meta.json") || relative.equals("problem.md")
-                || (relative.startsWith("tests/") && (relative.endsWith(".in") || relative.endsWith(".out") || relative.equals("tests/public.txt")));
+                || (relative.startsWith("tests/") && (relative.endsWith(".in") || relative.endsWith(".out") || relative.equals("tests/public.txt")))
+                || relative.startsWith(SOLUTION_PREFIX);
     }
 
     private ImportProblem toImportProblem(String folder, Map<String, String> files) {
@@ -135,6 +143,24 @@ public class ProblemBankZipReader {
             testCases.add(new TestCaseRequest(file.getValue(), output, publicNames.contains(name)));
         }
 
+        // 정답 코드 - solutions/sol.<ext>, 언어별 1개. sol.cc 와 sol.cpp 가 같이 있으면 이름순 첫 파일이 C++ 이다
+        Map<String, String> solutionsByLanguage = new LinkedHashMap<>();
+        for (Map.Entry<String, String> file : new TreeMap<>(files).entrySet()) {
+            String path = file.getKey();
+            if (!path.startsWith(SOLUTION_PREFIX)) {
+                continue;
+            }
+            String language = SOLUTION_LANGUAGES.get(path.substring(SOLUTION_PREFIX.length()).toLowerCase(Locale.ROOT));
+            String code = file.getValue().replace("\r\n", "\n");
+            if (language == null || code.isBlank()) {
+                continue;   // 모르는 확장자·빈 파일은 정답 코드가 아니다
+            }
+            solutionsByLanguage.putIfAbsent(language, code);
+        }
+        List<ProblemSolutionPayload> solutions = solutionsByLanguage.entrySet().stream()
+                .map(entry -> new ProblemSolutionPayload(entry.getKey(), entry.getValue()))
+                .toList();
+
         return new ImportProblem(
                 meta.problemNo(),
                 meta.title() == null ? null : meta.title().strip(),
@@ -144,7 +170,8 @@ public class ProblemBankZipReader {
                 meta.tags() == null ? List.of() : meta.tags(),
                 meta.timeLimitMs(),
                 meta.memoryLimitMb(),
-                testCases);
+                testCases,
+                solutions);
     }
 
     /** meta.json - 레포 README 의 형식. 모르는 키는 무시(레포 쪽에 필드가 먼저 늘어도 서버가 깨지지 않게) */

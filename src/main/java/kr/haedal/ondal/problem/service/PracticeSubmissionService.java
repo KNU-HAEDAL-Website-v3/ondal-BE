@@ -1,11 +1,14 @@
 package kr.haedal.ondal.problem.service;
 
+import kr.haedal.ondal.auth.authorization.CohortAuthorizer;
 import kr.haedal.ondal.common.error.ConflictException;
 import kr.haedal.ondal.common.error.NotFoundException;
+import kr.haedal.ondal.common.error.NotSolvedException;
 import kr.haedal.ondal.judge.entity.JudgeResult;
 import kr.haedal.ondal.judge.repository.JudgeResultRepository;
 import kr.haedal.ondal.judge.repository.TestCaseRepository;
 import kr.haedal.ondal.judge.service.JudgeService;
+import kr.haedal.ondal.problem.dto.AcceptedSolutionResponse;
 import kr.haedal.ondal.problem.dto.PracticeSubmitRequest;
 import kr.haedal.ondal.problem.entity.Problem;
 import kr.haedal.ondal.submission.dto.SubmissionResponse;
@@ -15,6 +18,7 @@ import kr.haedal.ondal.submission.entity.SubmissionType;
 import kr.haedal.ondal.submission.repository.SubmissionRepository;
 import kr.haedal.ondal.user.dto.UserSummary;
 import kr.haedal.ondal.user.entity.User;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,20 +41,25 @@ import java.util.stream.Collectors;
 @Transactional
 public class PracticeSubmissionService {
 
+    /** 다른 사람 풀이 한 번에 최대 건수 (docs hoj/api.md 5절) */
+    public static final int MAX_ACCEPTED_SOLUTIONS = 50;
+
     private final ProblemService problemService;
     private final SubmissionRepository submissionRepository;
     private final TestCaseRepository testCaseRepository;
     private final JudgeResultRepository judgeResultRepository;
     private final JudgeService judgeService;
+    private final CohortAuthorizer cohortAuthorizer;
 
     public PracticeSubmissionService(ProblemService problemService, SubmissionRepository submissionRepository,
                                      TestCaseRepository testCaseRepository, JudgeResultRepository judgeResultRepository,
-                                     JudgeService judgeService) {
+                                     JudgeService judgeService, CohortAuthorizer cohortAuthorizer) {
         this.problemService = problemService;
         this.submissionRepository = submissionRepository;
         this.testCaseRepository = testCaseRepository;
         this.judgeResultRepository = judgeResultRepository;
         this.judgeService = judgeService;
+        this.cohortAuthorizer = cohortAuthorizer;
     }
 
     /**
@@ -95,5 +104,29 @@ public class PracticeSubmissionService {
                 .findByIdAndProblemIdAndUserId(submissionId, problemId, user.getId())
                 .orElseThrow(() -> new NotFoundException("제출을 찾을 수 없습니다."));
         return SubmissionResponse.practice(submission, UserSummary.of(user, null), judgeService.resultOf(submission));
+    }
+
+    /**
+     * 다른 사람 풀이 (docs hoj/api.md 5절) - 남의 연습 제출이 보이는 **유일한** 경로.
+     * 조건: 요청자가 이 문제를 맞혔거나(연습·과제 무관) 운영진 이상. 아니면 403 NOT_SOLVED - 백준·프로그래머스와 같은 "맞힌 뒤에만" 규칙 (PM 결정 13).
+     * 내용: 연습 제출 중 ACCEPTED 를 사용자당 최신 1건, 본인 제외, 최신 먼저, 최대 50건. language 는 비우면 전체
+     */
+    @Transactional(readOnly = true)
+    public List<AcceptedSolutionResponse> findAcceptedSolutions(Long problemId, String language, User viewer) {
+        problemService.requireProblem(problemId);
+        if (!cohortAuthorizer.isOperatorAnywhere(viewer)
+                && judgeResultRepository.countAcceptedByUserIdAndProblemId(viewer.getId(), problemId) == 0) {
+            throw new NotSolvedException();
+        }
+        String filter = language == null || language.isBlank() ? null : language.strip();
+        List<Submission> accepted = submissionRepository.findLatestAcceptedPerUser(
+                problemId, viewer.getId(), filter, PageRequest.of(0, MAX_ACCEPTED_SOLUTIONS));
+        if (accepted.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, JudgeResult> judges = judgeService.resultsOf(accepted.stream().map(Submission::getId).toList());
+        return accepted.stream()
+                .map(submission -> AcceptedSolutionResponse.of(submission, judges.get(submission.getId())))
+                .toList();
     }
 }
