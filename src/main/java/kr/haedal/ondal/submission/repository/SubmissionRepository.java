@@ -1,13 +1,18 @@
 package kr.haedal.ondal.submission.repository;
 
+import kr.haedal.ondal.judge.entity.Verdict;
 import kr.haedal.ondal.submission.dto.AssignmentSubmissionCount;
+import kr.haedal.ondal.submission.dto.LanguageCount;
 import kr.haedal.ondal.submission.dto.SubmissionMoment;
+import kr.haedal.ondal.submission.dto.UserSubmissionCount;
 import kr.haedal.ondal.submission.entity.Submission;
 import kr.haedal.ondal.submission.entity.SubmissionType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -79,6 +84,66 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             select count(s) from Submission s
             where s.type = :type and (s.problem.id = :problemId or s.assignment.problem.id = :problemId)""")
     long countTargetingProblem(@Param("problemId") Long problemId, @Param("type") SubmissionType type);
+
+    // ---- HOJ P3 (docs hoj/api.md) - 채점 현황 피드·사용자 페이지·랭킹·다른 사람 풀이 ------------------------------
+
+    /**
+     * 채점 현황 피드 - 연습 제출만, 최신(id) 먼저. 필터는 null 이면 무시, beforeId 는 커서(그보다 작은 id 만).
+     * 응답에 문제·제출자가 실리므로 fetch join. 판정은 judge_results 가 연관이 아니라 exists 로 건다. 페이지 크기는 Pageable 로
+     */
+    @Query("""
+            select s from Submission s join fetch s.problem join fetch s.user
+            where s.problem is not null
+              and (:problemId is null or s.problem.id = :problemId)
+              and (:userId is null or s.user.id = :userId)
+              and (:language is null or s.language = :language)
+              and (:beforeId is null or s.id < :beforeId)
+              and (:verdict is null or exists (select r from JudgeResult r where r.submissionId = s.id and r.verdict = :verdict))
+            order by s.id desc""")
+    List<Submission> findPracticeFeed(@Param("problemId") Long problemId, @Param("userId") Long userId,
+                                      @Param("language") String language, @Param("verdict") Verdict verdict,
+                                      @Param("beforeId") Long beforeId, Pageable pageable);
+
+    /**
+     * 다른 사람 풀이 - 이 문제의 연습 제출 중 ACCEPTED 를 사용자당 최신 1건(id 최대), 요청자 본인 제외, 최신 먼저.
+     * language 는 null 이면 전체. 응답에 제출자가 실리므로 fetch join. 건수 상한은 Pageable 로
+     */
+    @Query("""
+            select s from Submission s join fetch s.user
+            where s.id in (
+                select max(s2.id) from Submission s2, JudgeResult r
+                where r.submissionId = s2.id and s2.problem.id = :problemId
+                  and r.verdict = kr.haedal.ondal.judge.entity.Verdict.ACCEPTED
+                  and s2.user.id <> :viewerId
+                  and (:language is null or s2.language = :language)
+                group by s2.user.id)
+            order by s.submittedAt desc""")
+    List<Submission> findLatestAcceptedPerUser(@Param("problemId") Long problemId, @Param("viewerId") Long viewerId,
+                                               @Param("language") String language, Pageable pageable);
+
+    /** 사용자 페이지 - 언어별 연습 제출 수, 많이 쓴 언어 먼저 */
+    @Query("""
+            select new kr.haedal.ondal.submission.dto.LanguageCount(s.language, count(s))
+            from Submission s where s.user.id = :userId and s.problem is not null
+            group by s.language order by count(s) desc, s.language asc""")
+    List<LanguageCount> countPracticeGroupedByLanguage(@Param("userId") Long userId);
+
+    /** 랭킹 행의 submissionCount - 사용자 묶음의 연습 제출 수를 쿼리 1번으로 */
+    @Query("""
+            select new kr.haedal.ondal.submission.dto.UserSubmissionCount(s.user.id, count(s))
+            from Submission s where s.problem is not null and s.user.id in :userIds group by s.user.id""")
+    List<UserSubmissionCount> countPracticeGroupedByUserIdIn(@Param("userIds") Collection<Long> userIds);
+
+    /**
+     * 활동 잔디 - since 이후 연습 제출 수를 KST 날짜별로. 제출 0인 날은 행이 없다. 행 = [날짜 문자열(YYYY-MM-DD), 건수].
+     * 날짜 경계가 KST 여야 해서(저장은 UTC) 네이티브 SQL - at time zone 은 JPQL 에 없다
+     */
+    @Query(value = """
+            select to_char(cast((s.submitted_at at time zone 'Asia/Seoul') as date), 'YYYY-MM-DD') as day, count(*) as cnt
+            from submissions s
+            where s.user_id = :userId and s.problem_id is not null and s.submitted_at >= :since
+            group by day order by day asc""", nativeQuery = true)
+    List<Object[]> countPracticeGroupedByKstDay(@Param("userId") Long userId, @Param("since") Instant since);
 
     /** 과제 목록의 submissionCount(운영진 전용) 조립용 집계 */
     @Query("""

@@ -1,5 +1,6 @@
 package kr.haedal.ondal.problem.repository;
 
+import kr.haedal.ondal.problem.dto.TagProblemCount;
 import kr.haedal.ondal.problem.entity.Problem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -43,4 +44,10 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     /** 태그 삭제 전 사용처 확인 - 이 태그를 쓰는 문제가 있는가 */
     @Query("select count(p) from Problem p join p.tags t where t.id = :tagId")
     long countByTagId(@Param("tagId") Long tagId);
+
+    /** 사용자 페이지 태그 숙련도의 분모 - 태그별 문제 수, 이름순. 문제가 없는 태그는 행이 없다 (HOJ P3) */
+    @Query("""
+            select new kr.haedal.ondal.problem.dto.TagProblemCount(t.id, t.name, count(p))
+            from Problem p join p.tags t group by t.id, t.name order by t.name asc""")
+    List<TagProblemCount> countGroupedByTag();
 }

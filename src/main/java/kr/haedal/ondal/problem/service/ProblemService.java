@@ -9,13 +9,18 @@ import kr.haedal.ondal.judge.engine.JudgeProperties;
 import kr.haedal.ondal.judge.repository.JudgeResultRepository;
 import kr.haedal.ondal.judge.repository.TestCaseRepository;
 import kr.haedal.ondal.problem.dto.ProblemAssignedCount;
+import kr.haedal.ondal.problem.dto.ProblemJudgeStats;
+import kr.haedal.ondal.problem.dto.ProblemMyStatus;
 import kr.haedal.ondal.problem.dto.ProblemPayload;
 import kr.haedal.ondal.problem.dto.ProblemResponse;
+import kr.haedal.ondal.problem.dto.ProblemSolvedUserCount;
 import kr.haedal.ondal.problem.dto.ProblemSummary;
 import kr.haedal.ondal.problem.dto.TagResponse;
 import kr.haedal.ondal.problem.entity.Problem;
 import kr.haedal.ondal.problem.entity.Tag;
+import kr.haedal.ondal.problem.repository.ProblemBookmarkRepository;
 import kr.haedal.ondal.problem.repository.ProblemRepository;
+import kr.haedal.ondal.problem.repository.ProblemSolutionRepository;
 import kr.haedal.ondal.problem.repository.TagRepository;
 import kr.haedal.ondal.submission.repository.SubmissionRepository;
 import kr.haedal.ondal.user.entity.User;
@@ -27,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +43,7 @@ import java.util.stream.Collectors;
  * - 삭제는 배정·제출이 하나라도 있으면 409 - 조용히 지우면 남의 분반 과제가 사라진다
  *
  * 테스트케이스·실행 제한은 JudgeService(.../judge)가 맡는다 - 출제 화면은 문제 저장과 채점 설정 저장을 차례로 부른다.
+ * 정답 코드(ProblemSolutionService)·북마크(ProblemBookmarkService)는 별도 서비스 - 여기서는 목록·상세 조립과 삭제 연쇄에만 리포지토리를 직접 읽는다.
  */
 @Service
 @Transactional
@@ -48,12 +55,15 @@ public class ProblemService {
     private final TestCaseRepository testCaseRepository;
     private final JudgeResultRepository judgeResultRepository;
     private final SubmissionRepository submissionRepository;
+    private final ProblemSolutionRepository problemSolutionRepository;
+    private final ProblemBookmarkRepository problemBookmarkRepository;
     private final CohortAuthorizer cohortAuthorizer;
     private final JudgeProperties judgeProperties;
 
     public ProblemService(ProblemRepository problemRepository, TagRepository tagRepository,
                           AssignmentRepository assignmentRepository, TestCaseRepository testCaseRepository,
                           JudgeResultRepository judgeResultRepository, SubmissionRepository submissionRepository,
+                          ProblemSolutionRepository problemSolutionRepository, ProblemBookmarkRepository problemBookmarkRepository,
                           CohortAuthorizer cohortAuthorizer, JudgeProperties judgeProperties) {
         this.problemRepository = problemRepository;
         this.tagRepository = tagRepository;
@@ -61,13 +71,15 @@ public class ProblemService {
         this.testCaseRepository = testCaseRepository;
         this.judgeResultRepository = judgeResultRepository;
         this.submissionRepository = submissionRepository;
+        this.problemSolutionRepository = problemSolutionRepository;
+        this.problemBookmarkRepository = problemBookmarkRepository;
         this.cohortAuthorizer = cohortAuthorizer;
         this.judgeProperties = judgeProperties;
     }
 
     /**
      * 목록 - 번호 오름차순. tagIds 를 주면 그 태그를 **모두** 가진 문제만(AND).
-     * 화면이 필요로 하는 집계(자동 채점 여부·배정 횟수·내 해결 여부)는 문제 수와 무관하게 쿼리 3번으로 붙인다.
+     * 화면이 필요로 하는 집계(자동 채점 여부·배정 횟수·문제별 통계·내 상태·북마크)는 문제 수와 무관하게 쿼리 7번으로 붙인다 (Aggregates).
      */
     @Transactional(readOnly = true)
     public List<ProblemSummary> findAll(List<Long> tagIds, User viewer) {
@@ -78,23 +90,27 @@ public class ProblemService {
         if (problems.isEmpty()) {
             return List.of();
         }
-        List<Long> ids = problems.stream().map(Problem::getId).toList();
-        Set<Long> judged = new HashSet<>(testCaseRepository.findProblemIdsWithCases(ids));
-        Map<Long, Long> assigned = assignmentRepository.countGroupedByProblemIdIn(ids).stream()
-                .collect(Collectors.toMap(ProblemAssignedCount::problemId, ProblemAssignedCount::count));
-        Set<Long> solved = new HashSet<>(judgeResultRepository.findSolvedProblemIdsByUserId(viewer.getId()));
+        Aggregates aggregates = aggregate(problems.stream().map(Problem::getId).toList(), viewer);
 
         return problems.stream()
-                .map(problem -> new ProblemSummary(
-                        problem.getId(),
-                        problem.getProblemNo(),
-                        problem.getTitle(),
-                        tagResponses(problem),
-                        judged.contains(problem.getId()),
-                        assigned.getOrDefault(problem.getId(), 0L).intValue(),
-                        solved.contains(problem.getId()),
-                        problem.getDifficulty(),
-                        problem.allowedLanguageList()))
+                .map(problem -> {
+                    Long id = problem.getId();
+                    return new ProblemSummary(
+                            id,
+                            problem.getProblemNo(),
+                            problem.getTitle(),
+                            tagResponses(problem),
+                            aggregates.judgeEnabled(id),
+                            aggregates.assignedCount(id),
+                            aggregates.myStatus(id) == ProblemMyStatus.SOLVED,
+                            aggregates.myStatus(id),
+                            aggregates.solvedUserCount(id),
+                            aggregates.submissionCount(id),
+                            aggregates.acceptedRate(id),
+                            aggregates.bookmarked(id),
+                            problem.getDifficulty(),
+                            problem.allowedLanguageList());
+                })
                 .toList();
     }
 
@@ -129,7 +145,7 @@ public class ProblemService {
     /**
      * 삭제 - 배정(과제)이나 제출이 하나라도 있으면 409.
      * 문제는 여러 분반이 공유하므로, 조용히 지우면 남의 분반 과제와 그 제출 기록이 함께 사라진다.
-     * 지울 수 있는 건 "만들어 놓고 한 번도 안 쓴 문제"뿐 - 테스트케이스·태그 연결만 정리하면 된다.
+     * 지울 수 있는 건 "만들어 놓고 한 번도 안 쓴 문제"뿐 - 테스트케이스·태그 연결·정답 코드·북마크만 정리하면 된다.
      */
     public void delete(Long problemId) {
         Problem problem = requireProblemWithTags(problemId);
@@ -141,6 +157,8 @@ public class ProblemService {
         }
         judgeResultRepository.deleteAllByProblemId(problemId);
         testCaseRepository.deleteAllByProblemId(problemId);
+        problemSolutionRepository.deleteAllByProblemId(problemId);   // 정답 코드 (V11)
+        problemBookmarkRepository.deleteAllByProblemId(problemId);   // 북마크 (V11)
         problem.replaceTags(List.of());   // problem_tags 연결 해제 (FK RESTRICT)
         problemRepository.delete(problem);
     }
@@ -192,6 +210,8 @@ public class ProblemService {
 
     private ProblemResponse toResponse(Problem problem, User viewer) {
         Long id = problem.getId();
+        Aggregates aggregates = aggregate(List.of(id), viewer);
+        boolean operator = cohortAuthorizer.isOperatorAnywhere(viewer);
         return new ProblemResponse(
                 id,
                 problem.getProblemNo(),
@@ -200,16 +220,66 @@ public class ProblemService {
                 tagResponses(problem),
                 judgeProperties.effectiveTimeLimitMs(problem.getTimeLimitMs()),
                 judgeProperties.effectiveMemoryLimitMb(problem.getMemoryLimitMb()),
-                testCaseRepository.countByProblemId(id) > 0,
-                (int) assignmentRepository.countGroupedByProblemIdIn(List.of(id)).stream()
-                        .mapToLong(ProblemAssignedCount::count).sum(),
-                judgeResultRepository.findSolvedProblemIdsByUserId(viewer.getId()).contains(id),
+                aggregates.judgeEnabled(id),
+                aggregates.assignedCount(id),
+                aggregates.myStatus(id) == ProblemMyStatus.SOLVED,
+                aggregates.myStatus(id),
+                aggregates.solvedUserCount(id),
+                aggregates.submissionCount(id),
+                aggregates.acceptedRate(id),
+                aggregates.bookmarked(id),
                 problem.getCreatedBy() == null ? null : problem.getCreatedBy().getName(),
                 problem.getCreatedAt(),
                 problem.getUpdatedAt(),
-                cohortAuthorizer.isOperatorAnywhere(viewer),
+                operator,
                 problem.getDifficulty(),
-                problem.allowedLanguageList());
+                problem.allowedLanguageList(),
+                // 정답 코드는 운영진 이상에게만 존재가 보인다 (docs 결정 13) - 학생에게는 언제나 []
+                operator ? problemSolutionRepository.findLanguagesByProblemId(id) : List.of());
+    }
+
+    /**
+     * 목록·상세가 같이 쓰는 문제별 집계 - 문제 id 묶음에 대해 쿼리 7번(문제 수와 무관):
+     * 자동 채점 여부 · 배정 횟수 · 채점된 제출 수/ACCEPTED 수 · 푼 사람 수 · 내가 푼 문제 · 내가 시도한 문제 · 내 북마크
+     */
+    private Aggregates aggregate(List<Long> ids, User viewer) {
+        return new Aggregates(
+                new HashSet<>(testCaseRepository.findProblemIdsWithCases(ids)),
+                assignmentRepository.countGroupedByProblemIdIn(ids).stream()
+                        .collect(Collectors.toMap(ProblemAssignedCount::problemId, ProblemAssignedCount::count)),
+                judgeResultRepository.countGroupedByProblemIdIn(ids).stream()
+                        .collect(Collectors.toMap(ProblemJudgeStats::problemId, Function.identity())),
+                judgeResultRepository.countSolvedUsersGroupedByProblemIdIn(ids).stream()
+                        .collect(Collectors.toMap(ProblemSolvedUserCount::problemId, ProblemSolvedUserCount::count)),
+                new HashSet<>(judgeResultRepository.findSolvedProblemIdsByUserId(viewer.getId())),
+                new HashSet<>(judgeResultRepository.findAttemptedProblemIdsByUserId(viewer.getId())),
+                new HashSet<>(problemBookmarkRepository.findProblemIdsByUserId(viewer.getId())));
+    }
+
+    private record Aggregates(Set<Long> judged, Map<Long, Long> assigned, Map<Long, ProblemJudgeStats> judgeStats,
+                              Map<Long, Long> solvedUsers, Set<Long> solved, Set<Long> attempted, Set<Long> bookmarks) {
+
+        boolean judgeEnabled(Long id) { return judged.contains(id); }
+        int assignedCount(Long id) { return assigned.getOrDefault(id, 0L).intValue(); }
+        int solvedUserCount(Long id) { return solvedUsers.getOrDefault(id, 0L).intValue(); }
+        boolean bookmarked(Long id) { return bookmarks.contains(id); }
+
+        int submissionCount(Long id) {
+            ProblemJudgeStats stats = judgeStats.get(id);
+            return stats == null ? 0 : stats.submissionCount().intValue();
+        }
+
+        Integer acceptedRate(Long id) {
+            ProblemJudgeStats stats = judgeStats.get(id);
+            return stats == null ? null : stats.acceptedRate();
+        }
+
+        ProblemMyStatus myStatus(Long id) {
+            if (solved.contains(id)) {
+                return ProblemMyStatus.SOLVED;
+            }
+            return attempted.contains(id) ? ProblemMyStatus.ATTEMPTED : ProblemMyStatus.NONE;
+        }
     }
 
     /**

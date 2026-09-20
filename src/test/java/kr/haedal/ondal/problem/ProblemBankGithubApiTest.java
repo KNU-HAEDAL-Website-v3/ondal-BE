@@ -17,6 +17,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
@@ -120,6 +121,36 @@ class ProblemBankGithubApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.enabled").value(true))
                 .andExpect(jsonPath("$.samples", hasSize(1)))
                 .andExpect(jsonPath("$.samples[0].input").value("1 2\n"));
+    }
+
+    @Test
+    void solutions_폴더의_sol_확장자_파일을_정답_코드로_넣는다_운영진만_본다() throws Exception {
+        Map<String, String> files = sampleRepo();   // 2001 에 solutions/sol.py 가 이미 있다
+        files.put("problems/2001-a-plus-b/solutions/sol.cpp", "int main(){}\r\n");
+        files.put("problems/2001-a-plus-b/solutions/sol.txt", "확장자를 모르면 무시");
+        files.put("problems/2001-a-plus-b/solutions/sol.java", "   ");   // 빈 파일도 무시
+        GITHUB.zip = zipOf(files);
+
+        mockMvc.perform(post("/api/problems/import/github").session(login.admin()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.state").value("DONE"));
+        MvcResult list = mockMvc.perform(get("/api/problems").session(login.admin())).andReturn();
+        long first = readJson(list).get(0).get("id").asLong();
+
+        mockMvc.perform(get("/api/problems/{id}/solutions", first).session(login.admin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].language").value("C++"))
+                .andExpect(jsonPath("$[0].codeText").value("int main(){}\n"))   // CRLF → LF
+                .andExpect(jsonPath("$[1].language").value("Python 3"))
+                .andExpect(jsonPath("$[1].codeText").value("print(sum(map(int, input().split())))"))
+                .andExpect(jsonPath("$[1].updatedBy.name").value("관리자"));
+        mockMvc.perform(get("/api/problems/{id}", first).session(login.admin()))
+                .andExpect(jsonPath("$.solutionLanguages", contains("C++", "Python 3")));
+        mockMvc.perform(get("/api/problems/{id}", first).session(login.member("student")))
+                .andExpect(jsonPath("$.solutionLanguages", hasSize(0)));
+        mockMvc.perform(get("/api/problems/{id}/solutions", first).session(login.member("student")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

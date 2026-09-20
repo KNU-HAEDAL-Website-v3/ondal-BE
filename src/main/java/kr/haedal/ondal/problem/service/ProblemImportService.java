@@ -29,6 +29,7 @@ import java.util.function.IntConsumer;
  * - 번호(problemNo)가 키: 있으면 overwrite 에 따라 덮어쓰거나 건너뛰고, 없으면 만든다. 번들 안에 같은 번호가 둘이면 400
  * - 태그는 이름으로 - 없으면 만든다. 관리자 전용 API 라 태그 어휘 관리 권한(@AdminOnly)과 같은 수준
  * - 테스트케이스·제한은 JudgeService.saveConfig(통째 교체) 재사용 - 채점 규칙(상한·개수)이 화면 출제와 같다. 재채점은 하지 않는다
+ * - 정답 코드(solutions)는 ProblemSolutionService.replace(통째 교체) 재사용 - 배열이 있을 때만, 없으면(null) 기존 것을 둔다 (V11)
  * - 하나라도 실패하면 전부 되돌린다 - 반쯤 들어간 번들이 가장 골치 아프다
  */
 @Service
@@ -39,13 +40,16 @@ public class ProblemImportService {
     private final TagRepository tagRepository;
     private final ProblemService problemService;
     private final JudgeService judgeService;
+    private final ProblemSolutionService problemSolutionService;
 
     public ProblemImportService(ProblemRepository problemRepository, TagRepository tagRepository,
-                                ProblemService problemService, JudgeService judgeService) {
+                                ProblemService problemService, JudgeService judgeService,
+                                ProblemSolutionService problemSolutionService) {
         this.problemRepository = problemRepository;
         this.tagRepository = tagRepository;
         this.problemService = problemService;
         this.judgeService = judgeService;
+        this.problemSolutionService = problemSolutionService;
     }
 
     public ProblemImportResult importBundle(ProblemImportRequest request, User admin) {
@@ -89,6 +93,9 @@ public class ProblemImportService {
             problem.replaceTags(tags);
             judgeService.saveConfig(problem.getId(), new JudgeConfigRequest(
                     item.timeLimitMs(), item.memoryLimitMb(), item.testCases() == null ? List.of() : item.testCases(), false));
+            if (item.solutions() != null) {
+                problemSolutionService.replace(problem, item.solutions(), admin);
+            }
             processed.add(item.problemNo());
             onProgress.accept(created + updated + skipped);
         }
